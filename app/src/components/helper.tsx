@@ -10,20 +10,15 @@ const Helper: React.FC = () => {
       {isOpen ? (
         <div
           style={{
-            width: "20vw",
-            height: "50vh",
             backgroundColor: "white",
             borderRadius: "8px",
             boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
             position: "relative",
-            overflow: "hidden",
           }}>
           <button
             onClick={() => setIsOpen(false)}
             style={{
               position: "absolute",
-              top: "10px",
-              right: "10px",
               backgroundColor: "#ff5f5f",
               color: "white",
               border: "none",
