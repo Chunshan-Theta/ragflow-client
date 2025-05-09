@@ -110,7 +110,7 @@ const Chatbot: React.FC = () => {
         },
         body: JSON.stringify({
           question: "hi",
-          stream: false,
+          stream: true,
           session_id: sessionId
         })
       })
