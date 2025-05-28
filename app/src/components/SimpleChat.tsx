@@ -330,9 +330,9 @@ const SimpleChat: React.FC = () => {
 
   const resetSettings = () => {
     setSettings({
-      apiUrl: "https://ragflow.lazyinwork.com",
+      apiUrl: "",
       agentId: "",
-      apiKey: "ragflow-U0YmNjMDkyZWU3MTExZWZhZTYxMDI0Mm"
+      apiKey: ""
     })
     setShowSettingsForm(true)
     setSettingsStep('credentials')
