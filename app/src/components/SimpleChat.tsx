@@ -94,6 +94,8 @@ const SimpleChat: React.FC = () => {
     error: string | null
   }>({ ref: null, anchor: null, chunkDetail: null, loading: false, error: null })
   const [showReferences, setShowReferences] = useState<{ [key: number]: boolean }>({})
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isSendHovered, setIsSendHovered] = useState(false);
 
   const md = new MarkdownIt({ breaks: true });
 
@@ -149,6 +151,33 @@ const SimpleChat: React.FC = () => {
       return `<span style="color: #f87171;">[?]</span>`;
     });
     return html;
+  }
+
+  const formatMessageContent = (content: string) => {
+    // Check if content contains HTML
+    const htmlMatch = content.match(/```html\n([\s\S]*?)\n```/);
+    if (htmlMatch) {
+      const htmlContent = htmlMatch[1];
+      const textBeforeHtml = content.substring(0, content.indexOf('```html'));
+      const textAfterHtml = content.substring(content.indexOf('```', content.indexOf('```html') + 6) + 3);
+      
+      return (
+        <div>
+          {textBeforeHtml && <div dangerouslySetInnerHTML={{ __html: md.render(textBeforeHtml) }} />}
+          <div style={styles.iframeContainer}>
+            <iframe
+              srcDoc={htmlContent}
+              style={styles.iframe}
+              sandbox="allow-scripts"
+              title="Embedded content"
+            />
+          </div>
+          {textAfterHtml && <div dangerouslySetInnerHTML={{ __html: md.render(textAfterHtml) }} />}
+        </div>
+      );
+    }
+    
+    return <div dangerouslySetInnerHTML={{ __html: md.render(content) }} />;
   }
 
   const sendMessage = async (message: string = input.trim(), isInitial: boolean = false) => {
@@ -319,11 +348,13 @@ const SimpleChat: React.FC = () => {
     <div style={styles.wrapper}>
       {showSettingsForm ? (
         <div style={styles.card}>
-          <h2 style={styles.title}>⚙️ 設定</h2>
+          <div style={styles.header}>
+            <h2 style={styles.title}>⚙️ 設定</h2>
+          </div>
           {settingsStep === 'credentials' ? (
             <form onSubmit={saveCredentials} style={styles.settingsForm}>
               <div style={styles.formGroup}>
-                <label>API URL:</label>
+                <label style={styles.label}>API URL:</label>
                 <input
                   type="text"
                   value={settings.apiUrl}
@@ -334,7 +365,7 @@ const SimpleChat: React.FC = () => {
                 />
               </div>
               <div style={styles.formGroup}>
-                <label>API Key:</label>
+                <label style={styles.label}>API Key:</label>
                 <input
                   type="password"
                   value={settings.apiKey}
@@ -357,8 +388,8 @@ const SimpleChat: React.FC = () => {
                       ...styles.agentCard,
                       ...(selectedAgent === agent.id ? styles.selectedAgentCard : {}),
                       ...(hoveredAgentId === agent.id ? {
-                        borderColor: "#4f46e5",
-                        transform: "translateY(-2px)"
+                        transform: "translateY(-2px)",
+                        boxShadow: "0 4px 12px rgba(79, 70, 229, 0.15)"
                       } : {})
                     }}
                     onClick={() => setSelectedAgent(agent.id)}
@@ -393,7 +424,7 @@ const SimpleChat: React.FC = () => {
         </div>
       ) : (
         <div style={styles.card}>
-          <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={styles.header}>
             <h2 style={styles.title}>💬 聊天助理</h2>
             <button 
               onClick={resetSettings}
@@ -401,11 +432,9 @@ const SimpleChat: React.FC = () => {
               onMouseLeave={() => setIsResetHovered(false)}
               style={{
                 ...styles.secondaryButton,
-                padding: "6px 12px",
-                fontSize: "12px",
                 ...(isResetHovered ? {
                   background: "#f8fafc",
-                  border: "1px solid #4f46e5"
+                  borderColor: "#4f46e5"
                 } : {})
               }}
             >
@@ -414,70 +443,44 @@ const SimpleChat: React.FC = () => {
           </div>
           <div style={styles.chatBox} ref={chatBoxRef}>
             {messages.map((msg, index) => (
-              <div key={index} style={{ textAlign: msg.role === "user" ? "right" : "left", margin: "10px 0" }}>
-                <div style={{
-                  display: "inline-block",
-                  padding: "10px 14px",
-                  borderRadius: "12px",
-                  backgroundColor: msg.role === "user" ? "#4f46e5" : "#f1f5f9",
-                  color: msg.role === "user" ? "#fff" : "#111"
-                }}>
-                  <div dangerouslySetInnerHTML={{ __html: formatMessageWithReferences(msg.content, msg.references || []) }} />
-                  {msg.references && msg.references.length > 0 && (
-                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
-                      <button
-                        onClick={() => toggleReferences(index)}
-                        style={{
-                          background: showReferences[index] ? '#e0e7ff' : '#f1f5f9',
-                          color: '#4f46e5',
-                          border: 'none',
-                          borderRadius: 6,
-                          padding: '2px 10px',
-                          fontSize: 12,
-                          cursor: 'pointer',
-                          marginBottom: 4
-                        }}
-                      >
-                        {showReferences[index] ? '收合參考資料' : '展開參考資料'}
-                      </button>
-                      {showReferences[index] && (
-                        <div>
-                          <div style={{ fontWeight: "bold", marginBottom: "5px" }}>參考資料：</div>
-                          {msg.references.map((ref, refIndex) => (
-                            <div key={refIndex} style={{ marginBottom: "5px" }}>
-                              <div style={{ fontWeight: "500" }}>{ref.document_name}</div>
-                              <div style={{ color: "#888" }}>{ref.content}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              <div key={index} style={{
+                ...styles.message,
+                ...(msg.role === "user" ? styles.userMessage : styles.assistantMessage)
+              }}>
+                {formatMessageContent(msg.content)}
+                {msg.references && msg.references.length > 0 && (
+                  <div style={styles.references}>
+                    <button
+                      onClick={() => toggleReferences(index)}
+                      style={{
+                        ...styles.secondaryButton,
+                        padding: "4px 8px",
+                        fontSize: "12px"
+                      }}
+                    >
+                      {showReferences[index] ? '收合參考資料' : '展開參考資料'}
+                    </button>
+                    {showReferences[index] && (
+                      <div style={{ marginTop: "8px" }}>
+                        <div style={{ fontWeight: 500, marginBottom: "4px" }}>參考資料：</div>
+                        {msg.references.map((ref, refIndex) => (
+                          <div key={refIndex} style={{ marginBottom: "8px" }}>
+                            <div style={{ fontWeight: 500 }}>{ref.document_name}</div>
+                            <div style={{ color: "#64748b" }}>{ref.content}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
             {streamingContent && (
-              <div style={{ textAlign: "left", margin: "10px 0" }}>
-                <div style={{
-                  display: "inline-block",
-                  padding: "10px 14px",
-                  borderRadius: "12px",
-                  backgroundColor: "#f1f5f9",
-                  color: "#111"
-                }}>
-                  <div dangerouslySetInnerHTML={{ __html: formatMessageWithReferences(streamingContent, streamingReferences) }} />
-                  {streamingReferences.length > 0 && (
-                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#666" }}>
-                      <div style={{ fontWeight: "bold", marginBottom: "5px" }}>參考資料：</div>
-                      {streamingReferences.map((ref, refIndex) => (
-                        <div key={refIndex} style={{ marginBottom: "5px" }}>
-                          <div style={{ fontWeight: "500" }}>{ref.document_name}</div>
-                          <div style={{ color: "#888" }}>{ref.content}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div style={{
+                ...styles.message,
+                ...styles.assistantMessage
+              }}>
+                {formatMessageContent(streamingContent)}
               </div>
             )}
             <div ref={chatEndRef} />
@@ -490,14 +493,40 @@ const SimpleChat: React.FC = () => {
               onCompositionStart={() => setIsComposing(true)}
               onCompositionEnd={() => setIsComposing(false)}
               onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isComposing) {
-                    handleSendMessage()
-                  }
-                }}
-              style={styles.input}
+                if (e.key === "Enter" && !isComposing) {
+                  handleSendMessage()
+                }
+              }}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
+              style={{
+                ...styles.input,
+                ...(isInputFocused ? {
+                  outline: "none",
+                  borderColor: "#4f46e5",
+                  boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)"
+                } : {})
+              }}
               placeholder="輸入訊息..."
             />
-            <button onClick={handleSendMessage} style={styles.primaryButton}>發送</button>
+            <button 
+              onClick={handleSendMessage} 
+              onMouseEnter={() => setIsSendHovered(true)}
+              onMouseLeave={() => setIsSendHovered(false)}
+              style={{
+                ...styles.primaryButton,
+                ...(isSendHovered && !input.trim() ? {
+                  background: "#4338ca"
+                } : {}),
+                ...(input.trim() === "" ? {
+                  opacity: 0.5,
+                  cursor: "not-allowed"
+                } : {})
+              }}
+              disabled={!input.trim()}
+            >
+              發送
+            </button>
           </div>
           {selectedReference.ref && selectedReference.anchor && (
             <div style={{
@@ -541,133 +570,189 @@ const SimpleChat: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   wrapper: {
-    fontFamily: "'Segoe UI', sans-serif",
-    background: "#f0f4f8",
-    height: "100%",
-    padding: "auto",
-    margin: "0 auto",
-    alignItems: "flex-start"
+    fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+    background: "linear-gradient(to bottom, #1a1f2c, #2d3748)",
+    minHeight: "100vh",
+    padding: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
   },
   card: {
-    width: "88%",
-    maxWidth: "600px",
+    width: "100%",
+    maxWidth: "800px",
     background: "#fff",
-    borderRadius: "16px",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+    borderRadius: "24px",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
     padding: "24px",
-    margin: "0 auto"
+    display: "flex",
+    flexDirection: "column",
+    height: "80vh",
+    maxHeight: "800px"
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "0 0 20px 0",
+    borderBottom: "1px solid #e2e8f0",
+    marginBottom: "20px"
   },
   title: {
-    fontSize: "20px",
+    fontSize: "24px",
+    fontWeight: 700,
+    color: "#1a202c",
+    margin: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: "8px"
+  },
+  subtitle: {
+    fontSize: "18px",
     fontWeight: 600,
-    marginBottom: "16px"
+    color: "#2d3748",
+    marginBottom: "20px"
   },
   chatBox: {
-    height: "400px",
+    flex: 1,
     overflowY: "auto",
-    background: "#f8fafc",
-    padding: "10px",
-    borderRadius: "12px",
+    background: "#f7fafc",
+    padding: "20px",
+    borderRadius: "16px",
     border: "1px solid #e2e8f0",
-    marginBottom: "16px"
+    marginBottom: "20px"
   },
   inputRow: {
     display: "flex",
-    gap: "8px"
+    gap: "12px",
+    padding: "12px",
+    background: "#f7fafc",
+    borderRadius: "16px",
+    border: "1px solid #e2e8f0"
   },
   input: {
     flex: 1,
-    padding: "10px 12px",
-    borderRadius: "8px",
-    border: "1px solid #cbd5e1",
-    fontSize: "14px"
+    padding: "12px 16px",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    fontSize: "16px",
+    background: "#fff",
+    transition: "all 0.2s ease"
   },
   primaryButton: {
-    padding: "10px 16px",
-    borderRadius: "8px",
+    padding: "12px 24px",
+    borderRadius: "12px",
     border: "none",
     background: "#4f46e5",
     color: "#fff",
     fontWeight: 600,
-    cursor: "pointer"
-  },
-  settingsInfo: {
-    fontSize: "12px",
-    color: "#666",
-    padding: "8px",
-    background: "#f8fafc",
-    borderRadius: "6px",
-    marginBottom: "12px"
-  },
-  settingsForm: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px"
-  },
-  formGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px"
-  },
-  select: {
-    padding: "10px 12px",
-    borderRadius: "8px",
-    border: "1px solid #cbd5e1",
-    fontSize: "14px",
-    backgroundColor: "#fff"
-  },
-  subtitle: {
     fontSize: "16px",
-    fontWeight: 500,
-    marginBottom: "16px",
-    color: "#1f2937"
-  },
-  agentGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap: "16px",
-    maxHeight: "400px",
-    overflowY: "auto",
-    padding: "4px"
-  },
-  agentCard: {
-    padding: "16px",
-    borderRadius: "8px",
-    border: "1px solid #e5e7eb",
-    backgroundColor: "#fff",
     cursor: "pointer",
     transition: "all 0.2s ease"
   },
-  selectedAgentCard: {
-    borderColor: "#4f46e5",
-    backgroundColor: "#f5f3ff",
-    boxShadow: "0 2px 4px rgba(79, 70, 229, 0.1)"
-  },
-  agentName: {
-    fontSize: "14px",
-    fontWeight: 600,
-    color: "#111827",
-    marginBottom: "8px"
-  },
-  agentDescription: {
-    fontSize: "12px",
-    color: "#6b7280",
-    marginBottom: "8px",
-    lineHeight: 1.4
-  },
-  agentDate: {
-    fontSize: "11px",
-    color: "#9ca3af"
-  },
   secondaryButton: {
     padding: "10px 16px",
-    borderRadius: "8px",
+    borderRadius: "12px",
     border: "1px solid #e2e8f0",
     background: "#fff",
     color: "#4f46e5",
     fontWeight: 500,
     cursor: "pointer",
     transition: "all 0.2s ease"
+  },
+  settingsForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px",
+    padding: "20px",
+    background: "#f8fafc",
+    borderRadius: "16px"
+  },
+  formGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px"
+  },
+  label: {
+    fontSize: "14px",
+    fontWeight: 500,
+    color: "#4a5568"
+  },
+  agentGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+    gap: "16px",
+    maxHeight: "400px",
+    overflowY: "auto",
+    padding: "4px"
+  },
+  agentCard: {
+    padding: "20px",
+    borderRadius: "16px",
+    border: "1px solid #e2e8f0",
+    background: "#fff",
+    cursor: "pointer",
+    transition: "all 0.2s ease"
+  },
+  selectedAgentCard: {
+    borderColor: "#4f46e5",
+    background: "#f5f3ff",
+    boxShadow: "0 4px 12px rgba(79, 70, 229, 0.1)"
+  },
+  agentName: {
+    fontSize: "16px",
+    fontWeight: 600,
+    color: "#1a202c",
+    marginBottom: "8px"
+  },
+  agentDescription: {
+    fontSize: "14px",
+    color: "#4a5568",
+    marginBottom: "12px",
+    lineHeight: 1.5
+  },
+  agentDate: {
+    fontSize: "12px",
+    color: "#718096"
+  },
+  message: {
+    marginBottom: "16px",
+    maxWidth: "80%"
+  },
+  userMessage: {
+    marginLeft: "auto",
+    backgroundColor: "#4f46e5",
+    color: "#fff",
+    padding: "12px 16px",
+    borderRadius: "16px 16px 0 16px"
+  },
+  assistantMessage: {
+    marginRight: "auto",
+    backgroundColor: "#f8fafc",
+    color: "#1a202c",
+    padding: "12px 16px",
+    borderRadius: "16px 16px 16px 0",
+    border: "1px solid #e2e8f0"
+  },
+  references: {
+    marginTop: "8px",
+    fontSize: "12px",
+    color: "#718096"
+  },
+  iframeContainer: {
+    width: "100%",
+    marginTop: "16px",
+    marginBottom: "16px",
+    borderRadius: "8px",
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+  },
+  iframe: {
+    width: "100%",
+    height: "500px",
+    border: "none",
+    borderRadius: "8px"
   }
 }
 
