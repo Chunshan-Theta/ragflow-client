@@ -1,18 +1,19 @@
 // App.tsx
 import React from 'react'
+import { Routes, Route } from 'react-router-dom'
 import ChatBot from './components/chat'
 import Helper from './components/helper'
+import SimpleChatPage from './pages/SimpleChatPage'
 
 function App() {
   return (
-  <div>
-    <div className="bg-gray-50 items-center justify-center" style={{ height: "100vh" }}>
-      <ChatBot />
+    <div className="min-h-screen bg-gray-50">
+      <Routes>
+        <Route path="/" element={<SimpleChatPage />} />
+        <Route path="/demo" element={<ChatBot />} />
+        <Route path="/help" element={<Helper />} />
+      </Routes>
     </div>
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Helper />
-    </div>
-  </div>
   )
 }
 
