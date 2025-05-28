@@ -22,19 +22,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    background: '#f0f4f8'
+    background: 'linear-gradient(rgb(26, 31, 44), rgb(45, 55, 72))'
   },
   header: {
     padding: '20px',
-    background: '#fff',
+    background: 'rgb(26, 31, 44)',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     textAlign: 'center'
   },
   headerTitle: {
     margin: 0,
     fontSize: '24px',
-    color: '#1a1a1a',
-    fontWeight: 600
+    color: '#fff',
+    fontWeight: 600,
+    background: 'rgb(26, 31, 44)'
   },
   content: {
     flex: 1,
