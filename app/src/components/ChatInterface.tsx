@@ -26,6 +26,153 @@ interface Settings {
 
 
 
+// Reference modal component
+const ReferenceModal: React.FC<{
+  reference: Reference | null
+  onClose: () => void
+  position?: { x: number, y: number }
+  hostUrl?: string
+}> = ({ reference, onClose, position, hostUrl }) => {
+  if (!reference) return null
+
+  const modalStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  }
+
+  const contentStyle: React.CSSProperties = {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    padding: '24px',
+    minWidth: '320px',
+    width: '90vw',
+    maxHeight: '80vh',
+    overflow: 'auto',
+    margin: '20px',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+    position: 'relative',
+  }
+
+  return (
+    <div style={modalStyle} onClick={onClose}>
+      <div style={contentStyle} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <h3 style={{ margin: 0, color: '#1a202c', fontSize: '18px', fontWeight: 600 }}>引用資料來源</h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '24px',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: '0',
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+        
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ 
+            fontWeight: 600, 
+            color: '#4f46e5', 
+            marginBottom: '8px',
+            fontSize: '14px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            文件名稱
+          </div>
+          <div style={{ 
+            color: '#1a202c', 
+            fontSize: '16px',
+            padding: '8px 12px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '6px',
+            border: '1px solid #e2e8f0'
+          }}>
+            {reference.document_name}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ 
+            fontWeight: 600, 
+            color: '#4f46e5', 
+            marginBottom: '8px',
+            fontSize: '14px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            引用內容
+          </div>
+          <div style={{ 
+            color: '#374151', 
+            lineHeight: 1.6,
+            fontSize: '14px',
+            padding: '16px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            maxHeight: '300px',
+            overflow: 'auto'
+          }}>
+            {reference.content}
+          </div>
+      </div>
+
+        {reference.document_id && (
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#fff',
+                color: '#64748b',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+              }}
+            >
+              關閉
+            </button>
+            <a
+              href={`${hostUrl}/document/${reference.document_id}?ext=pdf&prefix=document`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#4f46e5',
+                color: '#fff',
+                textDecoration: 'none',
+                fontSize: '14px',
+                fontWeight: 500,
+                display: 'inline-block',
+              }}
+            >
+              查看完整文件
+            </a>
+      </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const ChatInterface: React.FC = () => {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -43,6 +190,7 @@ const ChatInterface: React.FC = () => {
   const [isSending, setIsSending] = useState(false)
   const sessionCreatedRef = useRef(false)
   const initialMessageSentRef = useRef(false)
+  const [selectedReference, setSelectedReference] = useState<Reference | null>(null)
 
   const md = new MarkdownIt({ breaks: true })
 
@@ -352,8 +500,8 @@ const ChatInterface: React.FC = () => {
         setStreamingReferences([])
       } else {
         console.log('No content to add as final message')
-        setStreamingContent("")
-        setStreamingReferences([])
+      setStreamingContent("")
+      setStreamingReferences([])
       }
 
     } catch (error) {
@@ -440,8 +588,7 @@ const ChatInterface: React.FC = () => {
         
         if (references && references[refIndex]) {
           const ref = { ...references[refIndex], dataset_id, document_id, id }
-          // Show reference details (you can customize this)
-          alert(`引用資料：\n\n文件：${ref.document_name}\n\n內容：${ref.content}`)
+          setSelectedReference(ref)
         }
       }
     }
@@ -451,6 +598,10 @@ const ChatInterface: React.FC = () => {
       document.removeEventListener('click', handleCitationClick)
     }
   }, [messages, streamingContent, streamingReferences])
+
+  const closeReferenceModal = () => {
+    setSelectedReference(null)
+  }
 
   const handleSendMessage = () => {
     const message = input.trim()
@@ -508,8 +659,8 @@ const ChatInterface: React.FC = () => {
                         formatMessageContent(message.content, message.references || [])
                       ) : (
                         <div dangerouslySetInnerHTML={{ __html: md.render(message.content) }} />
-                      )}
-                    </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -523,7 +674,7 @@ const ChatInterface: React.FC = () => {
                   <span style={styles.cursor}>▊</span>
                 </div>
               </div>
-            </div>
+                      </div>
           )}
 
           {(isLoading || isSending) && (
@@ -575,6 +726,13 @@ const ChatInterface: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Reference Modal */}
+      <ReferenceModal 
+        reference={selectedReference}
+        onClose={closeReferenceModal}
+        hostUrl={settings?.apiUrl}
+      />
     </div>
   )
 }
@@ -634,10 +792,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   messageWrapper: {
     display: 'flex',
-    width: '100%'
+    width: '100%',
   },
   message: {
-    maxWidth: '70%',
+    minWidth: '55vw',
     padding: '12px 16px',
     borderRadius: '12px',
     wordWrap: 'break-word'
@@ -720,7 +878,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   iframe: {
     width: "100%",
-    height: "500px",
+    height: "70vh",
     border: "none",
     borderRadius: "8px"
   }
