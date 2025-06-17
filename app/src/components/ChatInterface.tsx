@@ -33,6 +33,8 @@ const ReferenceModal: React.FC<{
   position?: { x: number, y: number }
   hostUrl?: string
 }> = ({ reference, onClose, position, hostUrl }) => {
+  const [isDownloading, setIsDownloading] = useState(false)
+  
   if (!reference) return null
 
   const modalStyle: React.CSSProperties = {
@@ -131,7 +133,7 @@ const ReferenceModal: React.FC<{
           </div>
       </div>
 
-        {reference.document_id && (
+        {reference.document_id && reference.dataset_id && (
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               onClick={onClose}
@@ -148,24 +150,45 @@ const ReferenceModal: React.FC<{
             >
               關閉
             </button>
-            <a
-              href={`${hostUrl}/document/${reference.document_id}?ext=pdf&prefix=document`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => {
+                alert('開始下載文件...')
+                onClose()
+                
+                const apiKey = JSON.parse(localStorage.getItem('chatSettings') || '{}').apiKey
+                const link = document.createElement('a')
+                link.href = `${hostUrl}/api/v1/datasets/${reference.dataset_id}/documents/${reference.document_id}`
+                link.download = reference.document_name || 'document'
+                
+                // Try to add auth header through fetch and create blob URL
+                fetch(link.href, {
+                  headers: { 'Authorization': `Bearer ${apiKey}` }
+                })
+                .then(res => res.blob())
+                .then(blob => {
+                  const url = URL.createObjectURL(blob)
+                  link.href = url
+                  link.click()
+                  URL.revokeObjectURL(url)
+                })
+                .catch(() => {
+                  // Fallback to direct link (might fail due to auth)
+                  link.click()
+                })
+              }}
               style={{
                 padding: '10px 20px',
                 borderRadius: '8px',
                 border: 'none',
                 backgroundColor: '#4f46e5',
                 color: '#fff',
-                textDecoration: 'none',
+                cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: 500,
-                display: 'inline-block',
               }}
             >
-              查看完整文件
-            </a>
+              下載文件
+            </button>
       </div>
         )}
       </div>
@@ -191,6 +214,8 @@ const ChatInterface: React.FC = () => {
   const sessionCreatedRef = useRef(false)
   const initialMessageSentRef = useRef(false)
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null)
+  const [hoveredRefIndex, setHoveredRefIndex] = useState<string | null>(null)
+  const [expandedReferences, setExpandedReferences] = useState<Set<string>>(new Set())
 
   const md = new MarkdownIt({ breaks: true })
 
@@ -209,7 +234,6 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true)
     
     try {
-      console.log('Creating session...')
       const response = await fetch(`${settings.apiUrl}/api/v1/agents/${settings.agentId}/sessions`.replace(/([^:]\/)\/+/g, "$1"), {
         method: "POST",
         credentials: 'include',
@@ -222,11 +246,9 @@ const ChatInterface: React.FC = () => {
       })
       
       const data = await response.json()
-      console.log('Session response:', data)
       
       if (data.code === 0) {
         setSessionId(data.data.id)
-        console.log('Session created:', data.data.id)
       } else {
         alert("Failed to create session. Please check your settings.")
         navigate('/settings')
@@ -253,18 +275,67 @@ const ChatInterface: React.FC = () => {
     return html
   }
 
+  const wrapHtmlWithErrorHandling = (htmlContent: string): string => {
+    // 在iframe中注入错误处理和兜底方案
+    const errorHandlingScript = `
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        console.log('Script error caught:', msg);
+        // 如果有D3错误，显示错误消息
+        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><h3>图表渲染出现问题</h3><p>原始内容:</p><pre style="text-align: left; background: #f5f5f5; padding: 10px; overflow: auto;">' + 
+          document.body.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></div>';
+        return true;
+      };
+      
+      // 等待页面加载完成后检查是否有内容渲染
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          const svg = document.querySelector('svg');
+          const chart = document.querySelector('#chart');
+          
+          // 如果5秒后还没有渲染出图表，显示原始内容
+          if (svg && svg.children.length === 0) {
+            document.body.innerHTML = '<div style="padding: 20px;"><h3>图表未能正确渲染</h3><p>检测到的内容但未能显示图表</p></div>';
+          } else if (chart && chart.children.length === 0) {
+            document.body.innerHTML = '<div style="padding: 20px;"><h3>图表容器为空</h3><p>图表容器存在但没有内容</p></div>';
+          }
+        }, 5000);
+      });
+    </script>
+    `;
+    
+    // 如果已经包含完整的HTML文档，在head中插入错误处理
+    if (htmlContent.includes('<!DOCTYPE html>') || htmlContent.includes('<html')) {
+      return htmlContent.replace('</head>', errorHandlingScript + '\n</head>');
+    } else {
+      // 如果只是HTML片段，包装成完整文档
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Chart Content</title>
+          ${errorHandlingScript}
+        </head>
+        <body>
+          ${htmlContent}
+        </body>
+        </html>
+      `;
+    }
+  }
+
   const formatMessageContent = (content: string, references: Reference[] = []) => {
     // Check if content contains HTML code blocks (markdown style)
     const htmlBlockMatch = content.match(/```html\n([\s\S]*?)\n```/)
     
     if (htmlBlockMatch) {
-      const htmlContent = htmlBlockMatch[1]
+      let htmlContent = htmlBlockMatch[1]
       const textBeforeHtml = content.substring(0, content.indexOf('```html')).trim()
       const textAfterHtml = content.substring(content.indexOf('```', content.indexOf('```html') + 6) + 3).trim()
       
-      console.log('HTML content detected:', htmlContent.substring(0, 100))
-      console.log('Text before HTML:', textBeforeHtml.substring(0, 100))
-      console.log('Text after HTML:', textAfterHtml.substring(0, 100))
+      // Wrap HTML content with error handling
+      htmlContent = wrapHtmlWithErrorHandling(htmlContent)
       
       return (
         <div>
@@ -342,7 +413,6 @@ const ChatInterface: React.FC = () => {
   const sendMessage = useCallback(async (message: string, isInitial: boolean = false) => {
     if (!message || !sessionId || !settings || isSending) return
     
-    console.log('Sending message:', message, 'isInitial:', isInitial)
     setIsSending(true)
     
     if (!isInitial) {
@@ -360,7 +430,6 @@ const ChatInterface: React.FC = () => {
         stream: true,
         session_id: sessionId,
       }
-      console.log('Request body:', requestBody)
 
       const response = await fetch(`${settings.apiUrl}/api/v1/agents/${settings.agentId}/completions`.replace(/([^:]\/)\/+/g, "$1"), {
         method: "POST",
@@ -373,9 +442,6 @@ const ChatInterface: React.FC = () => {
         body: JSON.stringify(requestBody)
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-
       if (!response.body) throw new Error("No response body")
 
       const reader = response.body.getReader()
@@ -384,34 +450,26 @@ const ChatInterface: React.FC = () => {
       let accumulatedContent = ""
       let accumulatedReferences: Reference[] = []
 
-      console.log('Starting to read stream...')
-
         while (true) {
           const { done, value } = await reader.read()
         if (done) {
-          console.log('Stream ended')
           break
         }
 
         buffer += decoder.decode(value, { stream: true })
-        console.log('Raw buffer:', buffer)
         const lines = buffer.split("\n")
         buffer = lines.pop() || ""
           
           for (const line of lines) {
-          console.log('Processing line:', line)
           if (line.startsWith("data:")) {
             const data = line.slice(5).trim()
-            console.log('Extracted data:', data)
             if (data === "[DONE]") {
-              console.log('Stream done signal received')
               continue
             }
             if (!data) continue
 
             try {
               const parsed = JSON.parse(data)
-              console.log('Parsed stream data:', parsed)
               
               // Handle different response formats
               if (parsed.data) {
@@ -419,10 +477,7 @@ const ChatInterface: React.FC = () => {
                   // Only update if we have content, don't overwrite with empty strings
                   if (parsed.data.answer.trim() || !accumulatedContent) {
                     accumulatedContent = parsed.data.answer
-                    console.log('Updated content:', accumulatedContent)
                     setStreamingContent(accumulatedContent)
-                  } else {
-                    console.log('Skipping empty answer, keeping existing content:', accumulatedContent)
                   }
                 }
                 if (parsed.data.reference && typeof parsed.data.reference === 'object') {
@@ -436,7 +491,6 @@ const ChatInterface: React.FC = () => {
                       document_id: chunk.document_id,
                       id: chunk.id
                     }))
-                    console.log('Updated references:', accumulatedReferences)
                     setStreamingReferences(accumulatedReferences)
                   } else if (Array.isArray(parsed.data.reference)) {
                     accumulatedReferences = [...accumulatedReferences, ...parsed.data.reference]
@@ -448,10 +502,7 @@ const ChatInterface: React.FC = () => {
               else if (parsed.answer !== undefined) {
                 if (parsed.answer.trim() || !accumulatedContent) {
                   accumulatedContent = parsed.answer
-                  console.log('Updated content (direct):', accumulatedContent)
                   setStreamingContent(accumulatedContent)
-                } else {
-                  console.log('Skipping empty direct answer, keeping existing content:', accumulatedContent)
                 }
               }
             } catch (e) {
@@ -461,47 +512,33 @@ const ChatInterface: React.FC = () => {
             // Try to parse lines that don't start with "data:"
             try {
               const parsed = JSON.parse(line.trim())
-              console.log('Parsed non-data line:', parsed)
               if (parsed.data && parsed.data.answer !== undefined) {
                 accumulatedContent = parsed.data.answer
-                console.log('Updated content (non-data):', accumulatedContent)
                 setStreamingContent(accumulatedContent)
               }
             } catch (e) {
-              console.log('Non-JSON line:', line.trim())
+              // Ignore non-JSON lines
             }
           }
         }
       }
 
       // Add final message only if we have content
-      console.log('Final accumulated content:', accumulatedContent)
-      console.log('Final accumulated references:', accumulatedReferences)
-      
       if (accumulatedContent.trim()) {
-        console.log('Adding final message:', accumulatedContent)
         const finalMessage = {
           role: "assistant" as const,
           content: accumulatedContent,
           references: accumulatedReferences
         }
-        console.log('Final message object:', finalMessage)
         
         // Add the final message and clear streaming content immediately
-        setMessages(prev => {
-          const newMessages = [...prev, finalMessage]
-          console.log('Final messages array will be:', newMessages)
-          console.log('Previous messages:', prev)
-          console.log('Adding message:', finalMessage)
-          return newMessages
-        })
+        setMessages(prev => [...prev, finalMessage])
         
         setStreamingContent("")
         setStreamingReferences([])
       } else {
-        console.log('No content to add as final message')
-      setStreamingContent("")
-      setStreamingReferences([])
+        setStreamingContent("")
+        setStreamingReferences([])
       }
 
     } catch (error) {
@@ -552,7 +589,6 @@ const ChatInterface: React.FC = () => {
   // Send initial message when session is created (only once)
   useEffect(() => {
     if (sessionId && !initialMessageSentRef.current) {
-      console.log('Session ready, sending initial message')
       initialMessageSentRef.current = true
       sendMessage("hi", true)
     }
@@ -603,6 +639,18 @@ const ChatInterface: React.FC = () => {
     setSelectedReference(null)
   }
 
+  const toggleReferenceExpansion = (refKey: string) => {
+    setExpandedReferences(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(refKey)) {
+        newSet.delete(refKey)
+      } else {
+        newSet.add(refKey)
+      }
+      return newSet
+    })
+  }
+
   const handleSendMessage = () => {
     const message = input.trim()
     if (!isComposing && message && !isSending) {
@@ -646,36 +694,146 @@ const ChatInterface: React.FC = () => {
 
       <div style={styles.chatContainer}>
         <div style={styles.messagesContainer}>
-          {messages.map((message, index) => {
-            console.log(`Rendering message ${index}:`, message)
-            return (
-              <div key={index} style={styles.messageWrapper}>
+          {messages.map((message, index) => (
+            <React.Fragment key={index}>
+              <div style={styles.messageWrapper}>
                 <div style={{
                   ...styles.message,
                   ...(message.role === 'user' ? styles.userMessage : styles.assistantMessage)
                 }}>
-                                      <div style={styles.messageContent}>
-                      {message.role === 'assistant' ? (
-                        formatMessageContent(message.content, message.references || [])
-                      ) : (
-                        <div dangerouslySetInnerHTML={{ __html: md.render(message.content) }} />
+                  <div style={styles.messageContent}>
+                    {message.role === 'assistant' ? (
+                      formatMessageContent(message.content, message.references || [])
+                    ) : (
+                      <div dangerouslySetInnerHTML={{ __html: md.render(message.content) }} />
                     )}
                   </div>
                 </div>
               </div>
-            )
-          })}
+              
+              {/* 參考資料區塊 */}
+              {message.role === 'assistant' && message.references && message.references.length > 0 && (() => {
+                const refGroupKey = `msg-${index}`
+                const isExpanded = expandedReferences.has(refGroupKey)
+                return (
+                  <div style={styles.messageWrapper}>
+                    <div style={styles.referencesMessage}>
+                      <div 
+                        style={{...styles.referencesHeader, cursor: 'pointer'}}
+                        onClick={() => toggleReferenceExpansion(refGroupKey)}
+                      >
+                        <span style={styles.expandIcon}>
+                          {isExpanded ? '▼' : '▶'}
+                        </span>
+                        📚 參考資料 ({message.references.length})
+                      </div>
+                      {isExpanded && (
+                        <div style={styles.referencesContainer}>
+                          {message.references.map((reference, refIndex) => {
+                            const refKey = `${index}-${refIndex}`
+                            const isHovered = hoveredRefIndex === refKey
+                            return (
+                              <div
+                                key={refIndex}
+                                style={{
+                                  ...styles.referenceItem,
+                                  backgroundColor: isHovered ? '#f1f5f9' : '#fff',
+                                  borderColor: isHovered ? '#4f46e5' : '#e2e8f0'
+                                }}
+                                onClick={() => setSelectedReference(reference)}
+                                onMouseEnter={() => setHoveredRefIndex(refKey)}
+                                onMouseLeave={() => setHoveredRefIndex(null)}
+                              >
+                                <div style={styles.referenceIcon}>📄</div>
+                                <div style={styles.referenceInfo}>
+                                  <div style={styles.referenceTitle}>
+                                    {reference.document_name}
+                                  </div>
+                                  <div style={styles.referencePreview}>
+                                    {reference.content.substring(0, 100)}
+                                    {reference.content.length > 100 && '...'}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+            </React.Fragment>
+          ))}
 
+          {/* 串流中的訊息 */}
           {streamingContent && (
-            <div style={styles.messageWrapper}>
-              <div style={{...styles.message, ...styles.assistantMessage}}>
-                <div style={styles.messageContent}>
-                  {formatMessageContent(streamingContent, streamingReferences)}
-                  <span style={styles.cursor}>▊</span>
+            <React.Fragment>
+              <div style={styles.messageWrapper}>
+                <div style={{...styles.message, ...styles.assistantMessage}}>
+                  <div style={styles.messageContent}>
+                    {formatMessageContent(streamingContent, streamingReferences)}
+                    <span style={styles.cursor}>▊</span>
+                  </div>
                 </div>
               </div>
-                      </div>
+              
+                             {/* 串流中的參考資料 */}
+               {streamingReferences && streamingReferences.length > 0 && (() => {
+                 const refGroupKey = 'streaming'
+                 const isExpanded = expandedReferences.has(refGroupKey)
+                 return (
+                   <div style={styles.messageWrapper}>
+                     <div style={styles.referencesMessage}>
+                       <div 
+                         style={{...styles.referencesHeader, cursor: 'pointer'}}
+                         onClick={() => toggleReferenceExpansion(refGroupKey)}
+                       >
+                         <span style={styles.expandIcon}>
+                           {isExpanded ? '▼' : '▶'}
+                         </span>
+                         📚 參考資料 ({streamingReferences.length})
+                       </div>
+                       {isExpanded && (
+                         <div style={styles.referencesContainer}>
+                           {streamingReferences.map((reference, refIndex) => {
+                             const refKey = `streaming-${refIndex}`
+                             const isHovered = hoveredRefIndex === refKey
+                             return (
+                               <div
+                                 key={refIndex}
+                                 style={{
+                                   ...styles.referenceItem,
+                                   backgroundColor: isHovered ? '#f1f5f9' : '#fff',
+                                   borderColor: isHovered ? '#4f46e5' : '#e2e8f0'
+                                 }}
+                                 onClick={() => setSelectedReference(reference)}
+                                 onMouseEnter={() => setHoveredRefIndex(refKey)}
+                                 onMouseLeave={() => setHoveredRefIndex(null)}
+                               >
+                                 <div style={styles.referenceIcon}>📄</div>
+                                 <div style={styles.referenceInfo}>
+                                   <div style={styles.referenceTitle}>
+                                     {reference.document_name}
+                                   </div>
+                                   <div style={styles.referencePreview}>
+                                     {reference.content.substring(0, 100)}
+                                     {reference.content.length > 100 && '...'}
+                                   </div>
+                                 </div>
+                               </div>
+                             )
+                           })}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 )
+               })()}
+            </React.Fragment>
           )}
+
+          
 
           {(isLoading || isSending) && (
             <div style={styles.messageWrapper}>
@@ -881,6 +1039,70 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: "70vh",
     border: "none",
     borderRadius: "8px"
+  },
+  referencesMessage: {
+    minWidth: '55vw',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    color: '#374151',
+    borderBottomLeftRadius: '4px',
+    marginTop: '8px'
+  },
+  referencesHeader: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#4f46e5',
+    marginBottom: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    userSelect: 'none'
+  },
+  expandIcon: {
+    fontSize: '12px',
+    color: '#4f46e5',
+    transition: 'transform 0.2s ease',
+    marginRight: '4px'
+  },
+  referencesContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  },
+  referenceItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '12px',
+    padding: '12px',
+    backgroundColor: '#fff',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  },
+  referenceIcon: {
+    fontSize: '16px',
+    flexShrink: 0,
+    marginTop: '2px'
+  },
+  referenceInfo: {
+    flex: 1,
+    minWidth: 0
+  },
+  referenceTitle: {
+    fontSize: '14px',
+    fontWeight: '600',
+    color: '#1a202c',
+    marginBottom: '4px',
+    wordBreak: 'break-word'
+  },
+  referencePreview: {
+    fontSize: '12px',
+    color: '#64748b',
+    lineHeight: '1.4',
+    wordBreak: 'break-word'
   }
 }
 

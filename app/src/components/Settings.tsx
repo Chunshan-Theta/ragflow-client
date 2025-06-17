@@ -19,9 +19,9 @@ interface Agent {
 const Settings: React.FC = () => {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<SettingsData>({
-    apiUrl: "https://ragflow.lazyinwork.com",
+    apiUrl: process.env.REACT_APP_DEFAULT_API_URL || "",
     agentId: "",
-    apiKey: "ragflow-U0YmNjMDkyZWU3MTExZWZhZTYxMDI0Mm"
+    apiKey: process.env.REACT_APP_DEFAULT_API_KEY || ""
   })
 
   const [agents, setAgents] = useState<Agent[]>([])
@@ -84,9 +84,9 @@ const Settings: React.FC = () => {
   const resetSettings = () => {
     localStorage.removeItem('chatSettings')
     setSettings({
-      apiUrl: "https://ragflow.lazyinwork.com",
+      apiUrl: process.env.REACT_APP_DEFAULT_API_URL || "",
       agentId: "",
-      apiKey: "ragflow-U0YmNjMDkyZWU3MTExZWZhZTYxMDI0Mm"
+      apiKey: process.env.REACT_APP_DEFAULT_API_KEY || ""
     })
     setSelectedAgent("")
     setSettingsStep('credentials')
