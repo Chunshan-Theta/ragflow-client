@@ -24,6 +24,8 @@ interface Settings {
   apiKey: string
 }
 
+
+
 const ChatInterface: React.FC = () => {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -101,6 +103,92 @@ const ChatInterface: React.FC = () => {
       return `<span style="color: #f87171;">[?]</span>`
     })
     return html
+  }
+
+  const formatMessageContent = (content: string, references: Reference[] = []) => {
+    // Check if content contains HTML code blocks (markdown style)
+    const htmlBlockMatch = content.match(/```html\n([\s\S]*?)\n```/)
+    
+    if (htmlBlockMatch) {
+      const htmlContent = htmlBlockMatch[1]
+      const textBeforeHtml = content.substring(0, content.indexOf('```html')).trim()
+      const textAfterHtml = content.substring(content.indexOf('```', content.indexOf('```html') + 6) + 3).trim()
+      
+      console.log('HTML content detected:', htmlContent.substring(0, 100))
+      console.log('Text before HTML:', textBeforeHtml.substring(0, 100))
+      console.log('Text after HTML:', textAfterHtml.substring(0, 100))
+      
+      return (
+        <div>
+          {textBeforeHtml && (
+            <div dangerouslySetInnerHTML={{ 
+              __html: formatMessageWithReferences(textBeforeHtml, references) 
+            }} />
+          )}
+          <div style={styles.iframeContainer}>
+            <iframe
+              srcDoc={htmlContent}
+              style={styles.iframe}
+              sandbox="allow-scripts"
+              title="Embedded content"
+            />
+          </div>
+          {textAfterHtml && (
+            <div dangerouslySetInnerHTML={{ 
+              __html: formatMessageWithReferences(textAfterHtml, references) 
+            }} />
+          )}
+        </div>
+      )
+    }
+    
+    // Check if content contains raw HTML documents
+    if (content && (content.includes('<!DOCTYPE html>') || content.includes('<html'))) {
+      // Extract text before HTML if any
+      const htmlStart = content.indexOf('<!DOCTYPE html>') !== -1 ? content.indexOf('<!DOCTYPE html>') : content.indexOf('<html')
+      const textBeforeHtml = content.substring(0, htmlStart).trim()
+      
+      // Find the end of HTML content
+      const htmlEndTag = content.indexOf('</html>')
+      let htmlContent = content.substring(htmlStart)
+      let textAfterHtml = ''
+      
+      if (htmlEndTag !== -1) {
+        const htmlEnd = htmlEndTag + 7 // length of '</html>'
+        htmlContent = content.substring(htmlStart, htmlEnd)
+        textAfterHtml = content.substring(htmlEnd).trim()
+      }
+      
+      return (
+        <div>
+          {textBeforeHtml && (
+            <div dangerouslySetInnerHTML={{ 
+              __html: formatMessageWithReferences(textBeforeHtml, references) 
+            }} />
+          )}
+          <div style={styles.iframeContainer}>
+            <iframe
+              srcDoc={htmlContent}
+              style={styles.iframe}
+              sandbox="allow-scripts"
+              title="Embedded content"
+            />
+          </div>
+          {textAfterHtml && (
+            <div dangerouslySetInnerHTML={{ 
+              __html: formatMessageWithReferences(textAfterHtml, references) 
+            }} />
+          )}
+        </div>
+      )
+    }
+    
+    // Regular markdown content
+    return (
+      <div dangerouslySetInnerHTML={{ 
+        __html: formatMessageWithReferences(content, references) 
+      }} />
+    )
   }
 
   const sendMessage = useCallback(async (message: string, isInitial: boolean = false) => {
@@ -190,11 +278,22 @@ const ChatInterface: React.FC = () => {
                   }
                 }
                 if (parsed.data.reference && typeof parsed.data.reference === 'object') {
-                  // Handle reference object or array
-                  if (Array.isArray(parsed.data.reference)) {
+                  // Handle reference object structure
+                  if (parsed.data.reference.chunks && Array.isArray(parsed.data.reference.chunks)) {
+                    accumulatedReferences = parsed.data.reference.chunks.map((chunk: any) => ({
+                      content: chunk.content,
+                      document_name: chunk.document_name,
+                      positions: chunk.positions || [],
+                      dataset_id: chunk.dataset_id,
+                      document_id: chunk.document_id,
+                      id: chunk.id
+                    }))
+                    console.log('Updated references:', accumulatedReferences)
+                    setStreamingReferences(accumulatedReferences)
+                  } else if (Array.isArray(parsed.data.reference)) {
                     accumulatedReferences = [...accumulatedReferences, ...parsed.data.reference]
+                    setStreamingReferences(accumulatedReferences)
                   }
-                  setStreamingReferences(accumulatedReferences)
                 }
               }
               // Sometimes the answer might be directly in the parsed object
@@ -315,6 +414,44 @@ const ChatInterface: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, streamingContent])
 
+  // Add click handler for citation references
+  useEffect(() => {
+    const handleCitationClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (target.classList.contains('citation-ref')) {
+        const refIndex = parseInt(target.getAttribute('data-ref-index') || '-1')
+        const dataset_id = target.getAttribute('data-dataset-id') || undefined
+        const document_id = target.getAttribute('data-document-id') || undefined
+        const id = target.getAttribute('data-chunk-id') || undefined
+        
+        // Find the references from current streaming or messages
+        let references: Reference[] = []
+        if (streamingContent && streamingReferences.length > 0) {
+          references = streamingReferences
+        } else {
+          // Find references from the message containing this citation
+          for (const msg of messages) {
+            if (msg.references && msg.references.length > refIndex) {
+              references = msg.references
+              break
+            }
+          }
+        }
+        
+        if (references && references[refIndex]) {
+          const ref = { ...references[refIndex], dataset_id, document_id, id }
+          // Show reference details (you can customize this)
+          alert(`引用資料：\n\n文件：${ref.document_name}\n\n內容：${ref.content}`)
+        }
+      }
+    }
+
+    document.addEventListener('click', handleCitationClick)
+    return () => {
+      document.removeEventListener('click', handleCitationClick)
+    }
+  }, [messages, streamingContent, streamingReferences])
+
   const handleSendMessage = () => {
     const message = input.trim()
     if (!isComposing && message && !isSending) {
@@ -357,11 +494,6 @@ const ChatInterface: React.FC = () => {
                       </div>
 
       <div style={styles.chatContainer}>
-        {/* Debug info */}
-        <div style={{padding: '10px', background: '#1a202c', color: '#fff', fontSize: '12px', borderBottom: '1px solid #4a5568'}}>
-          Messages count: {messages.length} | Streaming: {streamingContent ? 'YES' : 'NO'} | Sending: {isSending ? 'YES' : 'NO'}
-        </div>
-        
         <div style={styles.messagesContainer}>
           {messages.map((message, index) => {
             console.log(`Rendering message ${index}:`, message)
@@ -371,15 +503,13 @@ const ChatInterface: React.FC = () => {
                   ...styles.message,
                   ...(message.role === 'user' ? styles.userMessage : styles.assistantMessage)
                 }}>
-                  <div style={styles.messageContent}>
-                    {message.role === 'assistant' ? (
-                      <div dangerouslySetInnerHTML={{ 
-                        __html: formatMessageWithReferences(message.content, message.references || []) 
-                      }} />
-                    ) : (
-                      <div dangerouslySetInnerHTML={{ __html: md.render(message.content) }} />
-                    )}
-                  </div>
+                                      <div style={styles.messageContent}>
+                      {message.role === 'assistant' ? (
+                        formatMessageContent(message.content, message.references || [])
+                      ) : (
+                        <div dangerouslySetInnerHTML={{ __html: md.render(message.content) }} />
+                      )}
+                    </div>
                 </div>
               </div>
             )
@@ -389,9 +519,7 @@ const ChatInterface: React.FC = () => {
             <div style={styles.messageWrapper}>
               <div style={{...styles.message, ...styles.assistantMessage}}>
                 <div style={styles.messageContent}>
-                  <div dangerouslySetInnerHTML={{ 
-                    __html: formatMessageWithReferences(streamingContent, streamingReferences) 
-                  }} />
+                  {formatMessageContent(streamingContent, streamingReferences)}
                   <span style={styles.cursor}>▊</span>
                 </div>
               </div>
@@ -580,6 +708,21 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   sendButtonHovered: {
     backgroundColor: '#4338ca'
+  },
+  iframeContainer: {
+    width: "100%",
+    marginTop: "16px",
+    marginBottom: "16px",
+    borderRadius: "8px",
+    overflow: "hidden",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+  },
+  iframe: {
+    width: "100%",
+    height: "500px",
+    border: "none",
+    borderRadius: "8px"
   }
 }
 
