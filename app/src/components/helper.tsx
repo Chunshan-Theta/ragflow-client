@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect, useRef } from "react"
-import Chatbot from "./chat"
+import React, { useState } from "react"
+import SimpleChat from "./SimpleChat"
 
 const Helper: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false)
@@ -33,7 +32,7 @@ const Helper: React.FC = () => {
           >
             ✖
           </button>
-          <Chatbot />
+          <SimpleChat />
         </div>
       ) : (
         <div
