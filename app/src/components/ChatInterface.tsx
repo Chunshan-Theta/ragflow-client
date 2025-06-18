@@ -282,7 +282,7 @@ const ChatInterface: React.FC = () => {
       window.onerror = function(msg, url, line, col, error) {
         console.log('Script error caught:', msg);
         // 如果有D3错误，显示错误消息
-        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><h3>图表渲染出现问题</h3><p>原始内容:</p><pre style="text-align: left; background: #f5f5f5; padding: 10px; overflow: auto;">' + 
+        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;"><h3>圖表超出處理範圍</h3><p>原始内容:</p><pre style="text-align: left; background: #f5f5f5; padding: 10px; overflow: auto;">' + 
           document.body.innerHTML.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></div>';
         return true;
       };
@@ -312,14 +312,9 @@ const ChatInterface: React.FC = () => {
       return `
         <!DOCTYPE html>
         <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Chart Content</title>
-          ${errorHandlingScript}
-        </head>
-        <body>
-          ${htmlContent}
-        </body>
+        
+        ${htmlContent}
+        
         </html>
       `;
     }
