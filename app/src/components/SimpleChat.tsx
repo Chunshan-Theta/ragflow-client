@@ -33,9 +33,9 @@ interface Agent {
 
 const SimpleChat: React.FC = () => {
   const [settings, setSettings] = useState<Settings>({
-    apiUrl: "",
+    apiUrl: "https://ragflow.lazyinwork.com",
     agentId: "",
-    apiKey: ""
+    apiKey: "ragflow-U0YmNjMDkyZWU3MTExZWZhZTYxMDI0Mm"
   })
 
   const [showSettingsForm, setShowSettingsForm] = useState(true)
