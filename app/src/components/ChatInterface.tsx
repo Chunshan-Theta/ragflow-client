@@ -673,19 +673,13 @@ const ChatInterface: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>AI Chat</h1>
+        <h1 style={styles.title} onClick={() => navigate('/')}>AI Chat</h1>
         <div style={styles.headerActions}>
           <div style={styles.agentInfo}>
             Agent: {settings.agentId}
         </div>
-                    <button
-            onClick={() => navigate('/settings')}
-            style={styles.settingsButton}
-          >
-            Settings
-                    </button>
-                          </div>
-                      </div>
+        </div>
+      </div>
 
       <div style={styles.chatContainer}>
         <div style={styles.messagesContainer}>
