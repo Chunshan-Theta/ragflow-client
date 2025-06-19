@@ -83,6 +83,7 @@ const WelcomePage: React.FC = () => {
           <button 
             onClick={() => navigate('/knowledge')}
             style={styles.button}
+            disabled={!hasSettings}
           >
             <div style={styles.buttonIcon}>📚</div>
             <div style={styles.buttonText}>Knowledge Base</div>
