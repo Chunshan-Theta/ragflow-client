@@ -82,13 +82,16 @@ const WelcomePage: React.FC = () => {
 
           <button 
             onClick={() => navigate('/knowledge')}
-            style={styles.button}
+            style={{
+              ... styles.button,
+              ...(hasSettings ? {} : styles.disabledButton)
+            }}
             disabled={!hasSettings}
           >
             <div style={styles.buttonIcon}>📚</div>
             <div style={styles.buttonText}>Knowledge Base</div>
             <div style={styles.buttonDescription}>
-              Upload documents to knowledge base
+            {hasSettings ? 'Start chatting with your agent' : 'Configure settings first'}
             </div>
           </button>
         </div>
