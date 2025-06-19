@@ -98,10 +98,10 @@ const Settings: React.FC = () => {
       <div style={styles.header}>
         <h1 style={styles.title}>Settings</h1>
         <button 
-          onClick={() => navigate('/chat')}
+          onClick={() => navigate('/')}
           style={styles.backButton}
         >
-          Back to Chat
+          Back to Home
         </button>
       </div>
 

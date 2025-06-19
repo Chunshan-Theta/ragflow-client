@@ -7,6 +7,7 @@ import SimpleChatPage from './pages/SimpleChatPage'
 import WelcomePage from './pages/WelcomePage'
 import Settings from './components/Settings'
 import ChatInterface from './components/ChatInterface'
+import KnowledgeBasePage from './pages/KnowledgeBasePage'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/help" element={<Helper />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/chat" element={<ChatInterface />} />
+        <Route path="/knowledge" element={<KnowledgeBasePage />} />
       </Routes>
     </div>
   )
