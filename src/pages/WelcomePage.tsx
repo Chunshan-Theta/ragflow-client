@@ -91,7 +91,22 @@ const WelcomePage: React.FC = () => {
             <div style={styles.buttonIcon}>📚</div>
             <div style={styles.buttonText}>Knowledge Base</div>
             <div style={styles.buttonDescription}>
-            {hasSettings ? 'Start chatting with your agent' : 'Configure settings first'}
+            {hasSettings ? 'Upload and manage documents' : 'Configure settings first'}
+            </div>
+          </button>
+
+          <button 
+            onClick={() => navigate('/notebook')}
+            style={{
+              ... styles.button,
+              ...(hasSettings ? {} : styles.disabledButton)
+            }}
+            disabled={!hasSettings}
+          >
+            <div style={styles.buttonIcon}>🤖</div>
+            <div style={styles.buttonText}>NotebookLM Style</div>
+            <div style={styles.buttonDescription}>
+            {hasSettings ? 'Upload documents and chat in one interface' : 'Configure settings first'}
             </div>
           </button>
         </div>
