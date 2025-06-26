@@ -107,13 +107,49 @@ const SourcePanel: React.FC = () => {
       })
 
       if (response.ok) {
+        const uploadResult = await response.json()
         const fileCount = selectedFiles.length
         console.log('上传成功，文件数量:', fileCount)
+        console.log('上传响应:', uploadResult)
+        
+        // 提取文档ID用于解析
+        let documentIds: string[] = []
+        if (uploadResult.data && Array.isArray(uploadResult.data)) {
+          documentIds = uploadResult.data.map((doc: any) => doc.id)
+        } else if (uploadResult.document_ids && Array.isArray(uploadResult.document_ids)) {
+          documentIds = uploadResult.document_ids
+        }
+        
+        // 自动驱动文档解析
+        if (documentIds.length > 0) {
+          console.log('开始解析文档，文档IDs:', documentIds)
+          try {
+            const parseResponse = await fetch(`${settings.apiUrl}/api/v1/datasets/${targetDatasetId}/chunks`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.apiKey}`
+              },
+              body: JSON.stringify({
+                document_ids: documentIds
+              })
+            })
+            
+            if (parseResponse.ok) {
+              console.log('文档解析已触发')
+            } else {
+              console.error('文档解析失败:', parseResponse.status)
+            }
+          } catch (parseError) {
+            console.error('文档解析请求失败:', parseError)
+          }
+        }
+        
         fetchDatasets() // 刷新数据集列表
         setShowUploadModal(false)
         setSelectedFiles(null)
         setTargetDatasetId('')
-        alert(`成功上传 ${fileCount} 个文件`)
+        alert(`成功上傳 ${fileCount} 個文件，需要等待解析完成才能使用。`)
       } else {
         const errorText = await response.text()
         console.error('Upload failed:', response.status, errorText)
@@ -222,9 +258,9 @@ const SourcePanel: React.FC = () => {
       {showUploadModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>选择知识库</h3>
+            <h3 style={styles.modalTitle}>選擇知識庫</h3>
             <p style={styles.modalDescription}>
-              选择要上传文件的知识库：
+              選擇要上傳參考資料的知識庫：
             </p>
             
             {/* 知识库选择 */}
@@ -260,7 +296,7 @@ const SourcePanel: React.FC = () => {
             {selectedFiles && (
               <div style={styles.fileInfo}>
                 <p style={styles.fileInfoText}>
-                  将上传 {selectedFiles.length} 个文件：
+                  將上傳 {selectedFiles.length} 個文件：
                 </p>
                 <div style={styles.fileList}>
                   {selectedFiles.map((file, index) => (

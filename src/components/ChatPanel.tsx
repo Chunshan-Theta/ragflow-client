@@ -375,10 +375,9 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   // 聊天區域
   messagesContainer: {
-    flex: 1,
     overflowY: 'auto',
     padding: '0 0 20px 0',
-    maxHeight: '400px',
+    height: '100%',
   },
   messageWrapper: { marginBottom: '16px' },
   message: {
