@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 interface Agent {
   id: string
@@ -49,7 +49,10 @@ const AgentSelector: React.FC<AgentSelectorProps> = ({ onAgentSelect }) => {
     }
   }
 
-  const agents: Agent[] = apiAgents.map(convertApiAgentToDisplayAgent)
+  const agents: Agent[] = useMemo(() => 
+    apiAgents.map(convertApiAgentToDisplayAgent), 
+    [apiAgents]
+  )
 
   // 获取可用的助手
   const fetchAgents = async () => {

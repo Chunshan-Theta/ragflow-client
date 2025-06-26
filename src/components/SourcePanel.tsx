@@ -73,8 +73,8 @@ const SourcePanel: React.FC = () => {
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    console.log('选择的文件:', files)
-    console.log('文件数量:', files ? files.length : 0)
+    console.log('選擇的文件:', files)
+    console.log('文件數量:', files ? files.length : 0)
     if (!files || files.length === 0) return
 
     const fileArray = Array.from(files)
