@@ -78,7 +78,7 @@ const Settings: React.FC = () => {
     const finalSettings = { ...settings, agentId: selectedAgent }
     localStorage.setItem('chatSettings', JSON.stringify(finalSettings))
     alert('Settings saved successfully!')
-    navigate('/chat')
+    navigate('/notebook')
   }
 
   const resetSettings = () => {
