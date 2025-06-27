@@ -105,8 +105,11 @@ const ChatPanel: React.FC = () => {
 
   // 格式化引用
   const formatReferences = (textContent: string, references: Reference[] = []): string => {
+    // Render markdown first
     let html = md.render(textContent || '')
-    return html.replace(/##(\d+)\$\$/g, (match: string, index: string) => {
+    
+    // Handle new format [ID:\d+] in rendered HTML
+    html = html.replace(/\[ID:(\d+)\]/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10)
       if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
         const ref = references[refIndex]
@@ -114,19 +117,49 @@ const ChatPanel: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`
     })
+    
+    // Handle parentheses format (ID:\d+) in rendered HTML
+    html = html.replace(/\(ID:(\d+)\)/g, (match: string, index: string) => {
+      const refIndex = parseInt(index, 10)
+      if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
+        const ref = references[refIndex]
+        return `<span class="citation-ref" data-ref-index="${refIndex}" data-dataset-id="${ref.dataset_id || ''}" data-document-id="${ref.document_id || ''}" data-chunk-id="${ref.id || ''}" style="color: #4f46e5; cursor: pointer; user-select: none; background: rgba(79, 70, 229, 0.1); padding: 2px 4px; border-radius: 4px; font-size: 12px;">[${index}]</span>`
+      }
+      return `<span style="color: #f87171;">[?]</span>`
+    })
+    
+    // Handle original format ##(\d+)\$\$ in rendered HTML
+    html = html.replace(/##(\d+)\$\$/g, (match: string, index: string) => {
+      const refIndex = parseInt(index, 10)
+      if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
+        const ref = references[refIndex]
+        return `<span class="citation-ref" data-ref-index="${refIndex}" data-dataset-id="${ref.dataset_id || ''}" data-document-id="${ref.document_id || ''}" data-chunk-id="${ref.id || ''}" style="color: #4f46e5; cursor: pointer; user-select: none; background: rgba(79, 70, 229, 0.1); padding: 2px 4px; border-radius: 4px; font-size: 12px;">[${index}]</span>`
+      }
+      return `<span style="color: #f87171;">[?]</span>`
+    })
+    
+    return html
   }
 
   // 渲染 HTML 內容
   const renderHtmlContent = (htmlContent: string, textBefore: string = '', textAfter: string = '', references: Reference[] = []) => {
     // 提取引用標記並轉換為可點擊的引用
     const citationMatches = htmlContent.match(/##(\d+)\$\$/g) || []
+    const idCitationMatches = htmlContent.match(/\[ID:(\d+)\]/g) || []
+    const parenCitationMatches = htmlContent.match(/\(ID:(\d+)\)/g) || []
+    
     const citationNumbers = citationMatches.map(match => match.replace(/##(\d+)\$\$/, '$1'))
+    const idCitationNumbers = idCitationMatches.map(match => match.replace(/\[ID:(\d+)\]/, '$1'))
+    const parenCitationNumbers = parenCitationMatches.map(match => match.replace(/\(ID:(\d+)\)/, '$1'))
+    
+    // 合併所有引用編號
+    const allCitationNumbers = [...citationNumbers, ...idCitationNumbers, ...parenCitationNumbers]
     
     // 清理 HTML 中的引用標記，避免在 iframe 中執行時報錯
-    const cleanedHtmlContent = htmlContent.replace(/##\d+\$\$/g, '')
+    const cleanedHtmlContent = htmlContent.replace(/##\d+\$\$/g, '').replace(/\[ID:\d+\]/g, '').replace(/\(ID:\d+\)/g, '')
     console.log(cleanedHtmlContent);
     // 生成引用列表
-    const citationList = citationNumbers.map(num => {
+    const citationList = allCitationNumbers.map(num => {
       const refIndex = parseInt(num, 10)
       if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
         const ref = references[refIndex]

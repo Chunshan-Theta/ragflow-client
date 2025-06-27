@@ -263,10 +263,11 @@ const ChatInterface: React.FC = () => {
   }, [settings, navigate])
 
   const formatMessageWithReferences = (content: string, references: Reference[]) => {
+    // Render markdown first
     let html = md.render(content || '')
     
-    // Handle original format ##(\d+)\$\$
-    html = html.replace(/##(\d+)\$\$/g, (match: string, index: string) => {
+    // Handle new format [ID:\d+] in rendered HTML
+    html = html.replace(/\[ID:(\d+)\]/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10)
       if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
         const ref = references[refIndex]
@@ -275,8 +276,18 @@ const ChatInterface: React.FC = () => {
       return `<span style="color: #f87171;">[?]</span>`
     })
     
-    // Handle new format [ID:\d+]
-    html = html.replace(/\[ID:(\d+)\]/g, (match: string, index: string) => {
+    // Handle parentheses format (ID:\d+) in rendered HTML
+    html = html.replace(/\(ID:(\d+)\)/g, (match: string, index: string) => {
+      const refIndex = parseInt(index, 10)
+      if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
+        const ref = references[refIndex]
+        return `<span class="citation-ref" data-ref-index="${refIndex}" data-dataset-id="${ref.dataset_id || ''}" data-document-id="${ref.document_id || ''}" data-chunk-id="${ref.id || ''}" style="color: #4f46e5; cursor: pointer; user-select: none;">[${index}]</span>`
+      }
+      return `<span style="color: #f87171;">[?]</span>`
+    })
+    
+    // Handle original format ##(\d+)\$\$ in rendered HTML
+    html = html.replace(/##(\d+)\$\$/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10)
       if (Array.isArray(references) && refIndex >= 0 && refIndex < references.length && references[refIndex]) {
         const ref = references[refIndex]
