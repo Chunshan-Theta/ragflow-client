@@ -3,6 +3,8 @@ import React from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Settings from './components/Settings'
 import NotebookLMPage from './pages/NotebookLMPage'
+import PlaygroundPage from './pages/PlaygroundPage'
+import ChatPage from './pages/ChatPage'
 
 function App() {
   return (
@@ -10,6 +12,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Settings />} />
         <Route path="/notebook" element={<NotebookLMPage />} />
+        <Route path="/playground" element={<PlaygroundPage />} />
+        <Route path="/chat" element={<ChatPage />} />
       </Routes>
     </div>
   )
