@@ -1,46 +1,110 @@
-# Getting Started with Create React App
+# React Chatbot UI
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, responsive chatbot interface built with React and TypeScript. This application provides an intuitive chat experience with agent selection, knowledge base integration, and source document management.
 
-## Available Scripts
+![React Chatbot UI](docs/imgs/image.png)
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- **Multi-Agent Support**: Select and switch between different AI agents
+- **Knowledge Base Integration**: Upload and manage knowledge base documents
+- **Source Panel**: View and manage source documents and references
+- **Real-time Chat**: Interactive chat interface with message formatting
+- **Settings Management**: Configure API endpoints and application settings
+- **Responsive Design**: Modern UI that works across desktop and mobile devices
+- **Docker Support**: Easy deployment with Docker and Docker Compose
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Tech Stack
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+- **Frontend**: React 19.1.0 with TypeScript
+- **Routing**: React Router DOM
+- **Styling**: CSS with custom animations
+- **Markdown**: markdown-it for rich text rendering
+- **Testing**: Jest and React Testing Library
+- **Containerization**: Docker
 
-### `npm test`
+## Quick Start
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Prerequisites
 
-### `npm run build`
+- Node.js 16+ 
+- npm or yarn
+- Docker (optional)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd react-chatbot-ui
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+2. Install dependencies:
+```bash
+npm install
+```
 
-### `npm run eject`
+3. Start the development server:
+```bash
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+4. Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Docker Deployment
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+1. Build and run with Docker Compose:
+```bash
+docker-compose up --build
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+2. Or build manually:
+```bash
+docker build -t react-chatbot-ui .
+docker run -p 3000:3000 react-chatbot-ui
+```
 
-## Learn More
+## Usage
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. **Agent Selection**: Choose your preferred AI agent from the agent selector
+2. **Knowledge Base**: Upload documents to enhance the chatbot's knowledge
+3. **Chat Interface**: Start chatting with the selected agent
+4. **Source Management**: View and manage reference documents in the source panel
+5. **Settings**: Configure API endpoints and application preferences
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Development
+
+### Available Scripts
+
+- `npm start` - Runs the app in development mode
+- `npm test` - Launches the test runner
+- `npm run build` - Builds the app for production
+- `npm run eject` - Ejects from Create React App (one-way operation)
+
+### Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── AgentSelector.tsx
+│   ├── ChatPanel.tsx
+│   ├── KnowledgeBaseUpload.tsx
+│   ├── Settings.tsx
+│   └── SourcePanel.tsx
+├── hooks/              # Custom React hooks
+├── pages/              # Page components
+├── styles/             # CSS and animations
+└── App.tsx            # Main application component
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License.
