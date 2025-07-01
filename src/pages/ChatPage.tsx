@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Input, message, Card, List, Typography, Upload, Space, Divider } from 'antd';
+import { Button, Input, message, Card, List, Typography, Upload, Space, Divider, Modal, Form, Select, Slider, InputNumber, Switch } from 'antd';
 import { LeftOutlined, RightOutlined, UploadOutlined } from '@ant-design/icons';
 import '../styles/ChatPage.css';
 
@@ -27,6 +27,19 @@ interface ChatAssistant {
   create_time: number;
   update_time: number;
   dataset_ids: string[];
+  avatar?: string;
+  llm?: {
+    model_name?: string;
+    temperature?: number;
+    top_p?: number;
+    presence_penalty?: number;
+    frequency_penalty?: number;
+  };
+  prompt?: {
+    empty_response?: string;
+    opener?: string;
+    prompt?: string;
+  };
 }
 
 interface ChatSession {
@@ -172,8 +185,80 @@ const ReferenceModal: React.FC<{
   );
 };
 
+const AssistantSettingsModal: React.FC<{
+  assistant: ChatAssistant | null;
+  visible: boolean;
+  onClose: () => void;
+  onUpdate: (assistant: ChatAssistant, updates: Partial<ChatAssistant>) => void;
+  datasets: Dataset[];
+}> = ({ assistant, visible, onClose, onUpdate, datasets }) => {
+  const [form] = Form.useForm();
+
+  useEffect(() => {
+    if (visible && assistant) {
+      form.setFieldsValue({
+        prompt: assistant.prompt || {}
+      });
+    }
+  }, [visible, assistant, form]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      if (assistant) {
+        onUpdate(assistant, values);
+        onClose();
+      }
+    } catch (error) {
+      console.error('Validation failed:', error);
+    }
+  };
+
+  if (!assistant) return null;
+
+  return (
+    <Modal
+      title="Edit Assistant Settings"
+      open={visible}
+      onCancel={onClose}
+      onOk={handleSubmit}
+      width={600}
+      destroyOnClose
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          prompt: assistant.prompt || {}
+        }}
+      >
+        <Form.Item name={['prompt', 'empty_response']} label="Empty Response">
+          <Input.TextArea 
+            rows={3}
+            placeholder="Response when no relevant content is found" 
+          />
+        </Form.Item>
+        
+        <Form.Item name={['prompt', 'opener']} label="Opening Message">
+          <Input.TextArea 
+            rows={2}
+            placeholder="Hi! I am your assistant, can I help you?" 
+          />
+        </Form.Item>
+        
+        <Form.Item name={['prompt', 'prompt']} label="Custom Prompt">
+          <Input.TextArea 
+            rows={4} 
+            placeholder="Enter custom prompt instructions" 
+          />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+};
+
 const ChatPage: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -192,6 +277,8 @@ const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null);
   const [streamingReferences, setStreamingReferences] = useState<Reference[]>([]);
+  const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+  const [editingAssistant, setEditingAssistant] = useState<ChatAssistant | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -621,6 +708,44 @@ const ChatPage: React.FC = () => {
     return () => document.removeEventListener('click', handleCitationClick);
   }, [messages, streamingReferences]);
 
+  const updateAssistant = async (assistant: ChatAssistant, updates: Partial<ChatAssistant>) => {
+    if (!settings) {
+      message.error('Please configure settings first');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${settings.apiUrl}/api/v1/chats/${assistant.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify(updates)
+      });
+
+      const data = await response.json();
+      if (data.code === 0) {
+        message.success('Assistant updated successfully!');
+        // Update local state
+        setChatAssistants(prev => prev.map(a => a.id === assistant.id ? { ...a, ...updates } : a));
+        if (selectedAssistant?.id === assistant.id) {
+          setSelectedAssistant(prev => prev ? { ...prev, ...updates } : prev);
+        }
+      } else {
+        message.error(data.message || 'Failed to update assistant');
+      }
+    } catch (error) {
+      message.error('Error updating assistant');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleEditAssistant = (assistant: ChatAssistant) => {
+    setEditingAssistant(assistant);
+    setIsSettingsModalVisible(true);
+  };
+
   if (!settings) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -688,6 +813,15 @@ const ChatPage: React.FC = () => {
               renderItem={item => (
                 <List.Item onClick={() => createChatSession(item)} style={styles.chatItem}>
                   <Text>{item.name}</Text>
+                  <Button 
+                    size="small" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditAssistant(item);
+                    }}
+                  >
+                    Edit
+                  </Button>
                 </List.Item>
               )}
             />
@@ -983,6 +1117,18 @@ const ChatPage: React.FC = () => {
               <List.Item 
                 onClick={() => createChatSession(item)} 
                 className={`chat-item ${selectedAssistant?.id === item.id ? 'selected' : ''}`}
+                actions={[
+                  <Button 
+                    key="edit" 
+                    size="small" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditAssistant(item);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                ]}
               >
                 <Text>{item.name}</Text>
               </List.Item>
@@ -995,6 +1141,18 @@ const ChatPage: React.FC = () => {
       <ReferenceModal 
         reference={selectedReference}
         onClose={() => setSelectedReference(null)}
+      />
+
+      {/* Assistant Settings Modal */}
+      <AssistantSettingsModal
+        assistant={editingAssistant}
+        visible={isSettingsModalVisible}
+        onClose={() => {
+          setIsSettingsModalVisible(false);
+          setEditingAssistant(null);
+        }}
+        onUpdate={updateAssistant}
+        datasets={datasets}
       />
     </div>
   );

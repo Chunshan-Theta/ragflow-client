@@ -71,6 +71,7 @@ const Settings: React.FC = () => {
 
   const saveCredentials = (e: React.FormEvent) => {
     e.preventDefault()
+    localStorage.setItem('chatSettings', JSON.stringify(settings))
     fetchAgents()
   }
 
@@ -97,18 +98,36 @@ const Settings: React.FC = () => {
     <div style={styles.container}>
       <div style={styles.header}>
         <h1 style={styles.title}>Settings</h1>
-        <button 
-          onClick={() => navigate('/')}
-          style={styles.backButton}
-        >
-          Back to Home
-        </button>
+        {settings.apiUrl && settings.apiKey && (
+          <button 
+            onClick={() => navigate('/init-assistant')}
+            style={styles.backButton}
+          >
+            Playground
+          </button>
+        )}
+        
       </div>
 
       <div style={styles.content}>
         {settingsStep === 'credentials' && (
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>API Configuration</h2>
+            {settings.apiUrl && settings.apiKey && (
+              <div style={styles.currentSettings}>
+                <h3 style={styles.settingsSubtitle}>Current Settings:</h3>
+                <div style={styles.settingItem}>
+                  <span style={styles.settingLabel}>API URL:</span>
+                  <span style={styles.settingValue}>{settings.apiUrl}</span>
+                </div>
+                <div style={styles.settingItem}>
+                  <span style={styles.settingLabel}>API Key:</span>
+                  <span style={styles.settingValue}>
+                    {settings.apiKey.slice(0, 8)}...{settings.apiKey.slice(-8)}
+                  </span>
+                </div>
+              </div>
+            )}
             <form onSubmit={saveCredentials} style={styles.form}>
               <div style={styles.formGroup}>
                 <label style={styles.label}>API URL:</label>
@@ -137,7 +156,7 @@ const Settings: React.FC = () => {
                 style={styles.button}
                 disabled={loading}
               >
-                {loading ? 'Loading...' : 'Load Agents'}
+                {loading ? 'Loading...' : 'Save'}
               </button>
             </form>
           </div>
@@ -345,6 +364,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '4px',
     cursor: 'pointer',
     fontSize: '14px'
+  },
+  currentSettings: {
+    marginBottom: '20px'
+  },
+  settingsSubtitle: {
+    fontSize: '16px',
+    marginBottom: '10px',
+    color: '#e2e8f0'
+  },
+  settingItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '5px'
+  },
+  settingLabel: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#e2e8f0'
+  },
+  settingValue: {
+    fontSize: '14px',
+    color: '#a0aec0'
   }
 }
 
