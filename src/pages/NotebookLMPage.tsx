@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import SourcePanel from '../components/SourcePanel'
 import ChatPanel from '../components/ChatPanel'
-import AgentSelector from '../components/AgentSelector'
 import '../styles/animations.css'
+import AgentSelector from '../components/AgentSelector'
 
 interface Agent {
   id: string
@@ -43,8 +43,9 @@ const NotebookLMPage: React.FC = () => {
 
       {/* Right Sidebar Toggle Button */}
       <button 
-        style={styles.rightToggleButton}
+        style={{...styles.rightToggleButton, display: 'none'}}
         onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+
       >
         {isRightSidebarOpen ? '›' : '‹'}
       </button>
@@ -61,6 +62,7 @@ const NotebookLMPage: React.FC = () => {
       <div style={{
         ...styles.rightSidebar,
         transform: isRightSidebarOpen ? 'translateX(0)' : 'translateX(100%)',
+        display: 'none'
       }}>
         <AgentSelector />
       </div>
@@ -107,7 +109,8 @@ const MobileLayout: React.FC = () => {
         <button
           style={{
             ...styles.tab,
-            ...(activeTab === 'agent' ? styles.activeTab : {})
+            ...(activeTab === 'agent' ? styles.activeTab : {}),
+            display: 'none'
           }}
           onClick={() => setActiveTab('agent')}
         >
@@ -123,7 +126,8 @@ const MobileLayout: React.FC = () => {
         ) : activeTab === 'chat' ? (
           <ChatPanel />
         ) : (
-          <AgentSelector />
+          // <AgentSelector/>
+          <></>
         )}
       </div>
     </div>
