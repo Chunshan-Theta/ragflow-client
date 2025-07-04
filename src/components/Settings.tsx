@@ -32,13 +32,12 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     // Load saved settings from localStorage
-    const savedSettings = localStorage.getItem('chatSettings')
-    if (savedSettings) {
-      const parsedSettings = JSON.parse(savedSettings)
-      setSettings(parsedSettings)
-      if (parsedSettings.agentId) {
-        setSelectedAgent(parsedSettings.agentId)
-      }
+    if (settings) {
+      localStorage.setItem('chatSettings', JSON.stringify(settings))
+    }
+
+    if (settings.apiUrl && settings.apiKey) {
+      navigate('/'+process.env.REACT_APP_DEFAULT_Home_page || 'chat')
     }
   }, [])
 
