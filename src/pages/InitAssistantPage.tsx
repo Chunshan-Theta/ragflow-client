@@ -29,23 +29,21 @@ interface Message {
 const InitAssistantPage: React.FC = () => {
   const navigate = useNavigate();
   const [dataset, setDataset] = useState<Dataset | null>(null);
-  const [chatAssistant, setChatAssistant] = useState<any>(null);
-  const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: '歡迎！讓我幫您設置聊天助手。首先，請創建一個數據集，然後上傳您的文件，我會根據您的數據幫您創建聊天助手。'
+      content: '歡迎！讓我幫您設置ai教學助教。'
+    },
+    {
+      role: 'assistant',
+      content: '首先，請先給予一個該助教一個名字。'
     }
   ]);
-  const [inputMessage, setInputMessage] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [parsing, setParsing] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [parseSuccess, setParseSuccess] = useState<string | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const currentMessageRef = useRef<string>('');
 
   // Add function to update messages
   const addMessage = (role: 'user' | 'assistant', content: string, type?: 'error' | 'success') => {
@@ -77,7 +75,6 @@ const InitAssistantPage: React.FC = () => {
     }
 
     try {
-      setParsing(true);
       const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${dataset.id}/chunks`, {
         method: 'POST',
         headers: {
@@ -85,19 +82,7 @@ const InitAssistantPage: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          document_ids: documentIds,
-          chunk_method: 'naive',
-          parser_config: {
-            chunk_token_num: 128,
-            delimiter: '\n',
-            auto_keywords: 0,
-            auto_questions: 0,
-            html4excel: false,
-            layout_recognize: 'DeepDOC',
-            task_page_size: 12,
-            raptor: { use_raptor: false },
-            graphrag: { use_graphrag: false }
-          }
+          document_ids: documentIds
         })
       });
 
@@ -115,8 +100,6 @@ const InitAssistantPage: React.FC = () => {
       }
     } catch (err) {
       addMessage('assistant', err instanceof Error ? err.message : 'Parse failed', 'error');
-    } finally {
-      setParsing(false);
     }
   };
 
@@ -164,6 +147,7 @@ const InitAssistantPage: React.FC = () => {
         setUploadSuccess(`成功上傳 ${selectedFiles.length} 個文件`);
         message.success('文件上傳成功！');
         addMessage('assistant', `太好了！我已經成功上傳了 ${selectedFiles.length} 個文件到您的數據集。`, 'success');
+        addMessage('assistant', `請點選繼續開始使用這名ai教學助教`, 'success');
         
         // Parse the uploaded documents
         if (uploadData.data && Array.isArray(uploadData.data)) {
@@ -208,14 +192,15 @@ const InitAssistantPage: React.FC = () => {
           name: dataset.name,
           dataset_ids: [dataset.id],
           prompt:{
+            empty_response: "",
             similarity_threshold: 0.01,
-            prompt: "您好，我是您的助手。我會根據上下文提供相關信息。{knowledge}",
+            prompt: "您是親和又專業的助教，請根據參考資料回答學生問題。以下是參考資料：{knowledge}",
             temperature: 0.7,
             max_tokens: 1024,
             top_p: 0.95,
             frequency_penalty: 0,
             presence_penalty: 0,
-            keywords_similarity_weight: 0.85,
+            keywords_similarity_weight: 0.05,
             variables: [
               {
                 key: "knowledge",
@@ -232,7 +217,6 @@ const InitAssistantPage: React.FC = () => {
 
       const data = await response.json();
       if (data.code === 0) {
-        setChatAssistant(data.data);
         message.success('聊天助手創建成功！');
         addMessage('assistant', '太好了！您的聊天助手已成功創建。現在可以開始聊天了！', 'success');
         navigate('/chat')
@@ -334,14 +318,18 @@ const InitAssistantPage: React.FC = () => {
               apiKey: settings?.apiKey || '',
               agentId: settings?.agentId || ''
             }}
-            onDatasetCreated={setDataset}
+            onDatasetCreated={(dataset) => {
+              setDataset(dataset);
+              addMessage('assistant', `太好了！我已經成功創建了ai教學助教。現在可以開始上傳資料到知識庫了！`, 'success');
+              addMessage('assistant', `知識庫的內容會提供給ai教學助教使用，請上傳相關的資料！`, 'success');
+            }}
           />}
           
           {dataset && !uploadSuccess&& (
             <>
               <Divider />
               <div>
-                <h3 className="mb-4">Upload Documents to Dataset</h3>
+                <h3 className="mb-4">上傳資料到知識庫</h3>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <input
                     type="file"
