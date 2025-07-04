@@ -57,10 +57,10 @@ const InitAssistantPage: React.FC = () => {
         const parsedSettings = JSON.parse(savedSettings);
         setSettings(parsedSettings);
       } catch (error) {
-        addMessage('assistant', '載入設置失敗。請先進行設置配置。', 'error');
+        navigate('/');
       }
     } else {
-      addMessage('assistant', '未找到設置。請先進行設置配置。', 'error');
+      navigate('/');
     }
   }, []);
 
