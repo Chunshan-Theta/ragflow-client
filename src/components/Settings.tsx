@@ -30,14 +30,21 @@ const Settings: React.FC = () => {
   const [hoveredAgentId, setHoveredAgentId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
+  const saveToStorage = async (data: any): Promise<void> => {
+    return new Promise((resolve) => {
+      localStorage.setItem('chatSettings', JSON.stringify(data));
+      resolve();
+    });
+  };
+  const init = async () => {
+    await saveToStorage(settings);
+    navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page || 'chat'));
+  };
+
   useEffect(() => {
     // Load saved settings from localStorage
     if (settings) {
-      localStorage.setItem('chatSettings', JSON.stringify(settings))
-    }
-
-    if (settings.apiUrl && settings.apiKey) {
-      navigate('/'+process.env.REACT_APP_DEFAULT_Home_page || 'chat')
+      init();
     }
   }, [])
 
