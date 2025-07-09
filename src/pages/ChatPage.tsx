@@ -1393,7 +1393,7 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   citationContainer: {
     marginTop: '8px',
-    display: 'flex',
+    display: 'none',
     alignItems: 'center',
   },
 
