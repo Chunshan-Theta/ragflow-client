@@ -618,6 +618,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: '#f8f9fa',
     borderRadius: '6px',
     border: '1px solid #e8eaed',
+    display: 'none',
   },
   citationLabel: {
     fontSize: '12px',
