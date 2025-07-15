@@ -189,19 +189,19 @@ const AgentSelector: React.FC<AgentSelectorProps> = ({ onAgentSelect }) => {
         
         {loading && (
           <div style={styles.loadingContainer}>
-            <div style={styles.loadingText}>正在加载助手...</div>
+            <div style={styles.loadingText}>正在載入助手...</div>
           </div>
         )}
 
         {!loading && !settings && (
           <div style={styles.noSettingsContainer}>
-            <div style={styles.noSettingsText}>请先在设置中配置 API 信息</div>
+            <div style={styles.noSettingsText}>請先回到首頁設定帳號資訊</div>
           </div>
         )}
 
         {!loading && agents.length === 0 && settings && (
           <div style={styles.noAgentsContainer}>
-            <div style={styles.noAgentsText}>暂无可用助手</div>
+            <div style={styles.noAgentsText}>暫無可用助手</div>
           </div>
         )}
 
