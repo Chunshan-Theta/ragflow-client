@@ -20,7 +20,7 @@ const Settings: React.FC = () => {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<SettingsData>({
     apiUrl: process.env.REACT_APP_DEFAULT_API_URL || "",
-    agentId: process.env.REACT_APP_DEFAULT_AGEENT_ID || "",
+    agentId: process.env.REACT_APP_DEFAULT_AGENT_ID || "",
     apiKey: process.env.REACT_APP_DEFAULT_API_KEY || ""
   })
 
