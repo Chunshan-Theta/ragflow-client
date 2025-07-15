@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, message, Card, List, Typography, Upload, Space, Divider, Modal, Form, Select, Slider, InputNumber, Switch } from 'antd';
 import { LeftOutlined, RightOutlined, UploadOutlined } from '@ant-design/icons';
 import '../styles/ChatPage.css';
+import { ReferenceModal } from '../components/ChatPanel';
 
 const { Text } = Typography;
 
@@ -69,122 +70,6 @@ interface Message {
 }
 
 // 引用模態框組件
-const ReferenceModal: React.FC<{
-  reference: Reference | null;
-  onClose: () => void;
-}> = ({ reference, onClose }) => {
-  if (!reference) return null;
-
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-    }} onClick={onClose}>
-      <div style={{
-        backgroundColor: '#fff',
-        borderRadius: '12px',
-        padding: '24px',
-        minWidth: '320px',
-        width: '90vw',
-        maxHeight: '80vh',
-        overflow: 'auto',
-        margin: '20px',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-        position: 'relative',
-      }} onClick={(e) => e.stopPropagation()}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '16px',
-        }}>
-          <h3 style={{
-            margin: 0,
-            color: '#1a202c',
-            fontSize: '18px',
-            fontWeight: 600,
-          }}>引用資料來源</h3>
-          <button onClick={onClose} style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            cursor: 'pointer',
-            color: '#64748b',
-            padding: '0',
-            lineHeight: 1,
-          }}>×</button>
-        </div>
-        
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{
-            fontWeight: 600,
-            color: '#4f46e5',
-            marginBottom: '8px',
-            fontSize: '14px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}>文件名稱</div>
-          <div style={{
-            color: '#1a202c',
-            fontSize: '16px',
-            padding: '8px 12px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '6px',
-            border: '1px solid #e2e8f0',
-          }}>{reference.document_name}</div>
-        </div>
-
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{
-            fontWeight: 600,
-            color: '#4f46e5',
-            marginBottom: '8px',
-            fontSize: '14px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}>引用內容</div>
-          <div style={{
-            color: '#374151',
-            lineHeight: 1.6,
-            fontSize: '14px',
-            padding: '16px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0',
-            maxHeight: '300px',
-            overflow: 'auto',
-          }}>{reference.content}</div>
-        </div>
-
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          justifyContent: 'flex-end',
-        }}>
-          <button onClick={onClose} style={{
-            padding: '10px 20px',
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0',
-            backgroundColor: '#fff',
-            color: '#64748b',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}>關閉</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const AssistantSettingsModal: React.FC<{
   assistant: ChatAssistant | null;
   visible: boolean;
@@ -1142,6 +1027,7 @@ const ChatPage: React.FC = () => {
       <ReferenceModal 
         reference={selectedReference}
         onClose={() => setSelectedReference(null)}
+        settings={settings}
       />
 
       {/* Assistant Settings Modal */}
