@@ -125,11 +125,11 @@ const InitAssistantPage: React.FC = () => {
       setParseSuccess(null);
 
       const formData = new FormData();
-      const MAX_FILE_SIZE = 2 * 1024 * 1024; // 50MB in bytes
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 50MB in bytes
       
       for (const file of Array.from(selectedFiles)) {
         if (file.size > MAX_FILE_SIZE) {
-          addMessage('assistant', `檔案 ${file.name} 超過2MB限制`, 'error');
+          addMessage('assistant', `檔案 ${file.name} 超過10MB限制`, 'error');
           setUploading(false);
           return;
         }

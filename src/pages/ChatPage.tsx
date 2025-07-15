@@ -239,10 +239,11 @@ const AssistantSettingsModal: React.FC<{
           />
         </Form.Item>
         
-        <Form.Item name={['prompt', 'opener']} label="Opening Message">
+        <Form.Item name={['prompt', 'opener']} label="Opening Message" style={{display: 'none'}}>
           <Input.TextArea 
             rows={2}
             placeholder="Hi! I am your assistant, can I help you?" 
+            value="請開始對話"
           />
         </Form.Item>
         
@@ -820,7 +821,7 @@ const ChatPage: React.FC = () => {
                       handleEditAssistant(item);
                     }}
                   >
-                    Edit
+                    設定
                   </Button>
                 </List.Item>
               )}

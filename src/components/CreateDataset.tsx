@@ -28,7 +28,7 @@ const DEFAULT_CONFIG = {
     task_page_size: 12,
     raptor: { use_raptor: false },
     graphrag: { use_graphrag: false },
-    auto_keywords: 24
+    auto_keywords: 12
   }
 };
 
