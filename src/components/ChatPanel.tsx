@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useChat, Message, Reference } from '../hooks/useChat'
 import MarkdownIt from 'markdown-it'
+import { validateHtml } from '../utils/htmlValidator';
 
 // 引用模態框組件
 const ReferenceModal: React.FC<{
@@ -8,6 +9,10 @@ const ReferenceModal: React.FC<{
   onClose: () => void
 }> = ({ reference, onClose }) => {
   if (!reference) return null
+
+  const stripHtmlTags = (html: string) => {
+    return html.replace(/<[^>]*>/g, '')
+  }
 
   return (
     <div style={styles.modalOverlay} onClick={onClose}>
@@ -24,7 +29,7 @@ const ReferenceModal: React.FC<{
 
         <div style={styles.modalSection}>
           <div style={styles.sectionLabel}>引用內容</div>
-          <div style={styles.referenceContent}>{reference.content}</div>
+          <div style={styles.referenceContent}>{stripHtmlTags(reference.content)}</div>
         </div>
 
         <div style={styles.modalFooter}>
@@ -100,7 +105,7 @@ const ChatPanel: React.FC = () => {
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
   
-  const { messages, streamingContent, streamingReferences, isSending, sendMessage } = useChat()
+  const { messages, streamingContent, streamingReferences, isSending, sendMessage, settings } = useChat()
   const md = new MarkdownIt({ breaks: true })
 
   // 格式化引用
@@ -142,7 +147,9 @@ const ChatPanel: React.FC = () => {
   }
 
   // 渲染 HTML 內容
-  const renderHtmlContent = (htmlContent: string, textBefore: string = '', textAfter: string = '', references: Reference[] = []) => {
+  const renderHtmlContent = (htmlContent: string, textBefore: string = '', textAfter: string = '', references: Reference[] = [], isStreaming: boolean = false) => {
+    let renderedHtmlContent;
+
     // 提取引用標記並轉換為可點擊的引用
     const citationMatches = htmlContent.match(/##(\d+)\$\$/g) || []
     const idCitationMatches = htmlContent.match(/\[ID:(\d+)\]/g) || []
@@ -158,6 +165,10 @@ const ChatPanel: React.FC = () => {
     // 清理 HTML 中的引用標記，避免在 iframe 中執行時報錯
     const cleanedHtmlContent = htmlContent.replace(/##\d+\$\$/g, '').replace(/\[ID:\d+\]/g, '').replace(/\(ID:\d+\)/g, '')
     console.log(cleanedHtmlContent);
+
+    // 使用新的驗證工具
+    const validationResult = validateHtml(cleanedHtmlContent);
+
     // 生成引用列表
     const citationList = allCitationNumbers.map(num => {
       const refIndex = parseInt(num, 10)
@@ -168,32 +179,68 @@ const ChatPanel: React.FC = () => {
       return `<span style="color: #f87171; padding: 2px 6px; margin: 0 4px; border-radius: 4px; font-size: 12px; display: inline-block;">[?]</span>`
     }).join('')
 
+    renderedHtmlContent = (
+      <>
+        {validationResult.isValid ? (
+          <div style={styles.iframeContainer}>
+            <iframe
+              srcDoc={cleanedHtmlContent}
+              style={styles.iframe}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
+              title="Embedded content"
+            />
+          </div>
+        ) : (
+          <div style={{ color: '#aaa', padding: '12px', background: '#efe', borderRadius: '8px', marginBottom: '12px' }}>
+          {isStreaming ? '嘗試繪圖中，請稍候...' : '偵測到來源資訊不足，請提供更多資料，或自行確認資料內容。'}
+          {!isStreaming && (
+              <div style={{ marginTop: '8px', fontSize: '14px', color: '#666', display: 'none'}}>
+                {Object.entries(validationResult.errors).map(([category, errors]) => (
+                  <div key={category} style={{ marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 500 }}>{getCategoryName(category)}：</div>
+                    <ul style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                      {errors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          {!isStreaming && (
+            <div style={styles.iframeContainer}>
+              <iframe
+                srcDoc={cleanedHtmlContent}
+                style={styles.iframe}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
+                title="Embedded content"
+              />
+            </div>
+          )}
+        </div>
+        )}
+        {citationList && (
+          <div style={styles.citationContainer}>
+            <div style={styles.citationLabel}>相關資料：</div>
+            <div dangerouslySetInnerHTML={{ __html: citationList }} />
+          </div>
+        )}
+      </>
+    )
+
 
     return (
-    <div>
-      {textBefore && (
-        <div dangerouslySetInnerHTML={{ __html: formatReferences(textBefore, references) }} />
-      )}
-      <div style={styles.iframeContainer}>
-        <iframe
-          srcDoc={cleanedHtmlContent}
-          style={styles.iframe}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
-          title="Embedded content"
-        />
+      <div>
+        {textBefore && (
+          <div dangerouslySetInnerHTML={{ __html: formatReferences(textBefore, references) }} />
+        )}
+        {renderedHtmlContent}
+        {textAfter && (
+          <div dangerouslySetInnerHTML={{ __html: formatReferences(textAfter, references) }} />
+        )}
       </div>
-      {citationList && (
-        <div style={styles.citationContainer}>
-          <div style={styles.citationLabel}>參考資料：</div>
-          <div dangerouslySetInnerHTML={{ __html: citationList }} />
-        </div>
-      )}
-      {textAfter && (
-        <div dangerouslySetInnerHTML={{ __html: formatReferences(textAfter, references) }} />
-      )}
-    </div>
-  ) 
-}
+    )
+  }
 
   // 格式化消息內容
   const formatMessageContent = (content: string, references: Reference[] = []) => {
@@ -203,7 +250,7 @@ const ChatPanel: React.FC = () => {
       const htmlContent = htmlBlockMatch[1]
       const textBefore = content.substring(0, content.indexOf('```html')).trim()
       const textAfter = content.substring(content.indexOf('```', content.indexOf('```html') + 6) + 3).trim()
-      return renderHtmlContent(htmlContent, textBefore, textAfter, references)
+      return renderHtmlContent(htmlContent, textBefore, textAfter, references, isSending)
     }
     
     // 完整 HTML 文檔
@@ -221,7 +268,7 @@ const ChatPanel: React.FC = () => {
         textAfter = content.substring(htmlEnd).trim()
       }
       
-      return renderHtmlContent(htmlContent, textBefore, textAfter, references)
+      return renderHtmlContent(htmlContent, textBefore, textAfter, references, isSending)
     }
     
     // 普通 markdown 內容
@@ -266,6 +313,25 @@ const ChatPanel: React.FC = () => {
     if (!message.trim() || isSending) return
     setInputValue('')
     await sendMessage(message)
+  }
+
+  // 檢查是否有設定 agentId
+  if (!settings || !settings.agentId) {
+    return (
+      <div style={styles.panel}>
+        <div style={styles.header}>
+          <h1 style={styles.title}>對話</h1>
+        </div>
+
+        <div style={styles.content}>
+          <div style={styles.noAgentContainer}>
+            <div style={styles.noAgentIcon}>🤖</div>
+            <div style={styles.noAgentMessage}>請選擇agent</div>
+            <div style={styles.noAgentSubtext}>請先在設定中選擇一個AI助手開始對話</div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -346,6 +412,18 @@ const ChatPanel: React.FC = () => {
     </div>
   )
 }
+
+// 輔助函數：獲取錯誤類別的中文名稱
+const getCategoryName = (category: string): string => {
+  const categoryNames: { [key: string]: string } = {
+    structure: '結構問題',
+    content: '內容問題',
+    d3: 'D3.js 問題',
+    quality: '代碼質量問題',
+    variables: '變量問題'
+  };
+  return categoryNames[category] || category;
+};
 
 const styles: { [key: string]: React.CSSProperties } = {
   // 基本佈局
@@ -635,6 +713,34 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '12px',
     color: '#5f6368',
     margin: 0,
+  },
+
+  // 沒有選擇 agent 的狀態
+  noAgentContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    padding: '40px 20px',
+    textAlign: 'center',
+  },
+  noAgentIcon: {
+    fontSize: '64px',
+    marginBottom: '24px',
+    opacity: 0.6,
+  },
+  noAgentMessage: {
+    fontSize: '24px',
+    fontWeight: 500,
+    color: '#202124',
+    marginBottom: '12px',
+  },
+  noAgentSubtext: {
+    fontSize: '16px',
+    color: '#5f6368',
+    lineHeight: 1.5,
+    maxWidth: '400px',
   },
 }
 
