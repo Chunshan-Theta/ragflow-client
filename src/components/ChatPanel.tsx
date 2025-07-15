@@ -4,14 +4,47 @@ import MarkdownIt from 'markdown-it'
 import { validateHtml } from '../utils/htmlValidator';
 
 // 引用模態框組件
-const ReferenceModal: React.FC<{
+export const ReferenceModal: React.FC<{
   reference: Reference | null
   onClose: () => void
-}> = ({ reference, onClose }) => {
+  settings: any
+}> = ({ reference, onClose, settings }) => {
   if (!reference) return null
 
   const stripHtmlTags = (html: string) => {
     return html.replace(/<[^>]*>/g, '')
+  }
+
+  const handleDownload = async () => {
+    if (!reference.dataset_id || !reference.document_id) {
+      console.error('Missing dataset_id or document_id')
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `${settings.apiUrl}/api/v1/datasets/${reference.dataset_id}/documents/${reference.document_id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${settings.apiKey}`,
+          }
+        }
+      )
+
+      if (!response.ok) throw new Error('Download failed')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = reference.document_name || 'document'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Failed to download document:', error)
+    }
   }
 
   return (
@@ -33,7 +66,18 @@ const ReferenceModal: React.FC<{
         </div>
 
         <div style={styles.modalFooter}>
-          <button onClick={onClose} style={styles.modalButton}>關閉</button>
+          <button 
+            onClick={()=>{
+              handleDownload()
+              alert('下載準備中，請稍後....')
+              onClose()
+            }}
+            style={{...styles.modalButton}}
+            disabled={!reference.dataset_id || !reference.document_id}
+          >
+            下載文件
+          </button>
+          <button onClick={onClose} style={{...styles.modalButton, backgroundColor: '#f87171', color: '#fff'}}>關閉</button>
         </div>
       </div>
     </div>
@@ -408,6 +452,7 @@ const ChatPanel: React.FC = () => {
       <ReferenceModal 
         reference={selectedReference} 
         onClose={() => setSelectedReference(null)}
+        settings={settings}
       />
     </div>
   )
