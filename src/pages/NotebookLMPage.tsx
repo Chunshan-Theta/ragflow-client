@@ -71,7 +71,7 @@ const NotebookLMPage: React.FC = () => {
       <div style={{
         ...styles.mainArea,
         marginLeft: isSidebarOpen ? '380px' : '0px',
-        marginRight: isRightSidebarOpen ? '380px' : '0px',
+        marginRight: isRightSidebarOpen ? '0px' : '0px',
       }}>
         <ChatPanel />
       </div>
