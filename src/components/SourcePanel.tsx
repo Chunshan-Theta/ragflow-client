@@ -793,7 +793,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   documentsList: {
-    maxHeight: '150px', // 控制文档列表的最大高度
+    maxHeight: '55vh', // 控制文档列表的最大高度
     overflowY: 'auto',
   },
 
