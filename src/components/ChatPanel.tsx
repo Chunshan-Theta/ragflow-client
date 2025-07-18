@@ -541,7 +541,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '16px',
     fontSize: '14px',
     lineHeight: 1.5,
-    maxWidth: '100%',
+    maxWidth: '95%',
     wordWrap: 'break-word',
   },
   userMessage: {
@@ -560,7 +560,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#5f6368',
     padding: '12px 16px',
     borderRadius: '16px',
-    maxWidth: '100%',
+    maxWidth: '95%',
     marginRight: 'auto',
   },
   loadingDots: { display: 'inline-flex', gap: '2px' },
