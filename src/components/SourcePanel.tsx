@@ -4,8 +4,12 @@ interface Document {
   id: string
   name: string
   type: string
-  uploadDate: string
-  status: 'uploaded' | 'processing' | 'ready'
+  create_date: string
+  status: string
+  chunk_count: number
+  size: number
+  run: string
+  location: string
 }
 
 interface Dataset {
@@ -30,6 +34,9 @@ const SourcePanel: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null)
   const [targetDatasetId, setTargetDatasetId] = useState<string>('')
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null)
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
 
   useEffect(() => {
     const savedSettings = localStorage.getItem('chatSettings')
@@ -69,6 +76,49 @@ const SourcePanel: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch datasets:', error)
     }
+  }
+
+  const fetchDocuments = async (datasetId: string) => {
+    if (!settings) return
+
+    console.log('Fetching documents for dataset:', datasetId)
+    setIsLoadingDocuments(true)
+    try {
+      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${datasetId}/documents?page=1&page_size=100`, {
+        headers: {
+          'Authorization': `Bearer ${settings.apiKey}`
+        }
+      })
+      
+      const data = await response.json()
+      console.log('Documents API response:', data)
+      
+      if (data.code === 0 && data.data && Array.isArray(data.data.docs)) {
+        console.log('Setting documents:', data.data.docs.length, 'documents')
+        setDocuments(data.data.docs)
+        setSelectedDatasetId(datasetId)
+      } else {
+        console.log('API response format unexpected:', data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch documents:', error)
+    } finally {
+      setIsLoadingDocuments(false)
+    }
+  }
+
+  const handleDatasetClick = (datasetId: string) => {
+    console.log('Clicking dataset:', datasetId, 'Current selected:', selectedDatasetId)
+    
+    // If clicking the same dataset, toggle it off
+    if (selectedDatasetId === datasetId) {
+      setSelectedDatasetId(null)
+      setDocuments([])
+      return
+    }
+    
+    // Otherwise fetch documents for the new dataset
+    fetchDocuments(datasetId)
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,22 +267,63 @@ const SourcePanel: React.FC = () => {
         {datasets.map((dataset) => (
           <div 
             key={dataset.id}
-            style={styles.datasetItem}
-            onClick={() => toggleDatasetSelection(dataset.id)}
+            style={{
+              ...styles.datasetItem,
+              ...(selectedDatasetId === dataset.id ? styles.selectedDatasetItem : {})
+            }}
           >
-            <div style={styles.datasetIcon}>📄</div>
-            <div style={styles.datasetInfo}>
-              <div style={styles.datasetName}>{dataset.name}</div>
-              <div style={styles.datasetMeta}>
-                {dataset.document_count} 個參考資料
-              </div>
-              {dataset.description && (
-                <div style={styles.datasetDescription}>
-                  {dataset.description}
+            <div style={styles.datasetHeader}>
+              <div style={styles.datasetIcon}>📄</div>
+              <div style={styles.datasetInfo}>
+                <div style={styles.datasetName}>{dataset.name}</div>
+                <div 
+                  style={styles.datasetMeta}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDatasetClick(dataset.id)
+                  }}
+                >
+                  {dataset.document_count} 個參考資料
                 </div>
-              )}
+                {dataset.description && (
+                  <div style={styles.datasetDescription}>
+                    {dataset.description}
+                  </div>
+                )}
+              </div>
             </div>
             
+            {/* 显示文档列表 */}
+            {selectedDatasetId === dataset.id && (
+              <div style={styles.documentsContainer}>
+                {isLoadingDocuments ? (
+                  <div style={styles.loadingDocuments}>
+                    <div style={styles.spinner}></div>
+                    <span>載入文件中...</span>
+                  </div>
+                ) : (
+                  <div style={styles.documentsList}>
+                    {documents.length > 0 ? (
+                      documents.map((doc) => (
+                        <div key={doc.id} style={styles.documentItem}>
+                          <div style={styles.documentIcon}>📄</div>
+                          <div style={styles.documentInfo}>
+                            <div style={styles.documentName}>{doc.name}</div>
+                            <div style={styles.documentMeta}>
+                              {doc.type} • {doc.create_date} • {doc.chunk_count} chunks • {Math.round(doc.size / 1024)} KB
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={styles.noDocuments}>
+                        暫無文件
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -431,10 +522,22 @@ const styles: { [key: string]: React.CSSProperties } = {
   datasetItem: {
     padding: '12px 20px',
     display: 'flex',
-    alignItems: 'center',
     gap: '12px',
     borderBottom: '1px solid #3a3d41',
     cursor: 'pointer',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+
+  selectedDatasetItem: {
+    backgroundColor: '#3a3d41',
+  },
+
+  datasetHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    width: '100%',
   },
 
   datasetIcon: {
@@ -457,6 +560,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   datasetMeta: {
     fontSize: '12px',
     color: '#9aa0a6',
+    cursor: 'pointer',
+    userSelect: 'none',
   },
 
   datasetDescription: {
@@ -668,6 +773,65 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: '#dadce0',
     color: '#9aa0a6',
     cursor: 'not-allowed',
+  },
+
+  // 文档列表样式
+  documentsContainer: {
+    marginTop: '12px',
+    padding: '12px 20px',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+    border: '1px solid #e8eaed',
+  },
+
+  loadingDocuments: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '20px 0',
+    color: '#5f6368',
+  },
+
+  documentsList: {
+    maxHeight: '150px', // 控制文档列表的最大高度
+    overflowY: 'auto',
+  },
+
+  documentItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '8px 0',
+    borderBottom: '1px solid #e8eaed',
+    cursor: 'pointer',
+  },
+
+  documentIcon: {
+    fontSize: '16px',
+    width: '20px',
+    textAlign: 'center',
+  },
+
+  documentInfo: {
+    flex: 1,
+  },
+
+  documentName: {
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#202124',
+    marginBottom: '2px',
+  },
+
+  documentMeta: {
+    fontSize: '12px',
+    color: '#5f6368',
+  },
+
+  noDocuments: {
+    textAlign: 'center',
+    padding: '20px 0',
+    color: '#9aa0a6',
   },
 }
 
