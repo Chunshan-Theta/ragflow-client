@@ -54,7 +54,6 @@ export const ReferenceModal: React.FC<{
           <h3 style={styles.modalTitle}>引用資料來源</h3>
           <button onClick={onClose} style={styles.closeButton}>×</button>
         </div>
-        
         <div style={styles.modalSection}>
           <div style={styles.sectionLabel}>文件名稱</div>
           <div style={styles.sectionContent}>{reference.document_name}</div>
@@ -66,18 +65,18 @@ export const ReferenceModal: React.FC<{
         </div>
 
         <div style={styles.modalFooter}>
-          <button 
-            onClick={()=>{
+          <button
+            onClick={() => {
               handleDownload()
               alert('下載準備中，請稍後....')
               onClose()
             }}
-            style={{...styles.modalButton}}
+            style={{ ...styles.modalButton, display: 'none' }} // 暫時隱藏按鈕
             disabled={!reference.dataset_id || !reference.document_id}
           >
             下載文件
           </button>
-          <button onClick={onClose} style={{...styles.modalButton, backgroundColor: '#f87171', color: '#fff'}}>關閉</button>
+          <button onClick={onClose} style={{ ...styles.modalButton, backgroundColor: '#f87171', color: '#fff' }}>關閉</button>
         </div>
       </div>
     </div>
@@ -133,8 +132,8 @@ const ChatInput: React.FC<{
       disabled={disabled}
     />
     <div style={styles.inputMeta}>
-      <button 
-        style={{...styles.sendButton, opacity: disabled ? 0.5 : 1}} 
+      <button
+        style={{ ...styles.sendButton, opacity: disabled ? 0.5 : 1 }}
         onClick={onSubmit}
         disabled={disabled}
       >
@@ -147,8 +146,10 @@ const ChatInput: React.FC<{
 const ChatPanel: React.FC = () => {
   const [inputValue, setInputValue] = useState('')
   const [selectedReference, setSelectedReference] = useState<Reference | null>(null)
+  const [isIframeModalOpen, setIsIframeModalOpen] = useState(false)
+  const [modalHtmlContent, setModalHtmlContent] = useState<string>('')
   const chatEndRef = useRef<HTMLDivElement | null>(null)
-  
+
   const { messages, streamingContent, streamingReferences, isSending, sendMessage, settings } = useChat()
   const md = new MarkdownIt({ breaks: true })
 
@@ -156,7 +157,7 @@ const ChatPanel: React.FC = () => {
   const formatReferences = (textContent: string, references: Reference[] = []): string => {
     // Render markdown first
     let html = md.render(textContent || '')
-    
+
     // Handle new format [ID:\d+] in rendered HTML
     html = html.replace(/\[ID:(\d+)\]/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10)
@@ -166,7 +167,7 @@ const ChatPanel: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`
     })
-    
+
     // Handle parentheses format (ID:\d+) in rendered HTML
     html = html.replace(/\(ID:(\d+)\)/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10)
@@ -176,7 +177,7 @@ const ChatPanel: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`
     })
-    
+
     // Handle original format ##(\d+)\$\$ in rendered HTML
     html = html.replace(/##(\d+)\$\$/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10)
@@ -186,7 +187,7 @@ const ChatPanel: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`
     })
-    
+
     return html
   }
 
@@ -198,17 +199,17 @@ const ChatPanel: React.FC = () => {
     const citationMatches = htmlContent.match(/##(\d+)\$\$/g) || []
     const idCitationMatches = htmlContent.match(/\[ID:(\d+)\]/g) || []
     const parenCitationMatches = htmlContent.match(/\(ID:(\d+)\)/g) || []
-    
+
     const citationNumbers = citationMatches.map(match => match.replace(/##(\d+)\$\$/, '$1'))
     const idCitationNumbers = idCitationMatches.map(match => match.replace(/\[ID:(\d+)\]/, '$1'))
     const parenCitationNumbers = parenCitationMatches.map(match => match.replace(/\(ID:(\d+)\)/, '$1'))
-    
+
     // 合併所有引用編號
     const allCitationNumbers = [...citationNumbers, ...idCitationNumbers, ...parenCitationNumbers]
-    
+
     // 清理 HTML 中的引用標記，避免在 iframe 中執行時報錯
     const cleanedHtmlContent = htmlContent.replace(/##\d+\$\$/g, '').replace(/\[ID:\d+\]/g, '').replace(/\(ID:\d+\)/g, '')
-    console.log(cleanedHtmlContent);
+    // console.log(cleanedHtmlContent);
 
     // 使用新的驗證工具
     const validationResult = validateHtml(cleanedHtmlContent);
@@ -226,19 +227,39 @@ const ChatPanel: React.FC = () => {
     renderedHtmlContent = (
       <>
         {validationResult.isValid ? (
-          <div style={styles.iframeContainer}>
+          <div style={{ ...styles.iframeContainer, position: 'relative' }}>
             <iframe
               srcDoc={cleanedHtmlContent}
               style={styles.iframe}
               sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
               title="Embedded content"
             />
+            <button
+              style={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                background: '#1a73e8',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 14px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                zIndex: 5,
+                display: 'none'
+              }}
+              onClick={() => {
+                setModalHtmlContent(cleanedHtmlContent)
+                setIsIframeModalOpen(true)
+              }}
+            >展開</button>
           </div>
         ) : (
           <div style={{ color: '#aaa', padding: '12px', background: '#efe', borderRadius: '8px', marginBottom: '12px' }}>
-          {isStreaming ? '嘗試繪圖中，請稍候...' : '偵測到來源資訊不足，請提供更多資料，或自行確認資料內容。'}
-          {!isStreaming && (
-              <div style={{ marginTop: '8px', fontSize: '14px', color: '#666', display: 'none'}}>
+            {isStreaming ? '嘗試繪圖中，請稍候...' : '偵測到來源資訊不足，請提供更多資料，或自行確認資料內容。'}
+            {!isStreaming && (
+              <div style={{ marginTop: '8px', fontSize: '14px', color: '#666', display: 'none' }}>
                 {Object.entries(validationResult.errors).map(([category, errors]) => (
                   <div key={category} style={{ marginBottom: '4px' }}>
                     <div style={{ fontWeight: 500 }}>{getCategoryName(category)}：</div>
@@ -251,17 +272,38 @@ const ChatPanel: React.FC = () => {
                 ))}
               </div>
             )}
-          {!isStreaming && (
-            <div style={styles.iframeContainer}>
-              <iframe
-                srcDoc={cleanedHtmlContent}
-                style={styles.iframe}
-                sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
-                title="Embedded content"
-              />
-            </div>
-          )}
-        </div>
+            {!isStreaming && (
+              <div style={styles.iframeContainer}>
+                <iframe
+                  srcDoc={cleanedHtmlContent}
+                  style={styles.iframe}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
+                  title="Embedded content"
+                />
+
+                <button
+                  style={{
+                    position: 'absolute',
+                    top: 12,
+                    right: 12,
+                    background: '#1a73e8',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    zIndex: 5,
+                    display: 'none'
+                  }}
+                  onClick={() => {
+                    setModalHtmlContent(cleanedHtmlContent)
+                    setIsIframeModalOpen(true)
+                  }}
+                >展開</button>
+              </div>
+            )}
+          </div>
         )}
         {citationList && (
           <div style={styles.citationContainer}>
@@ -296,25 +338,25 @@ const ChatPanel: React.FC = () => {
       const textAfter = content.substring(content.indexOf('```', content.indexOf('```html') + 6) + 3).trim()
       return renderHtmlContent(htmlContent, textBefore, textAfter, references, isSending)
     }
-    
+
     // 完整 HTML 文檔
     if (content && (content.includes('<!DOCTYPE html>') || content.includes('<html'))) {
       const htmlStart = content.indexOf('<!DOCTYPE html>') !== -1 ? content.indexOf('<!DOCTYPE html>') : content.indexOf('<html')
       const textBefore = content.substring(0, htmlStart).trim()
-      
+
       const htmlEndTag = content.indexOf('</html>')
       let htmlContent = content.substring(htmlStart)
       let textAfter = ''
-      
+
       if (htmlEndTag !== -1) {
         const htmlEnd = htmlEndTag + 7
         htmlContent = content.substring(htmlStart, htmlEnd)
         textAfter = content.substring(htmlEnd).trim()
       }
-      
+
       return renderHtmlContent(htmlContent, textBefore, textAfter, references, isSending)
     }
-    
+
     // 普通 markdown 內容
     return <div dangerouslySetInnerHTML={{ __html: formatReferences(content, references) }} />
   }
@@ -328,10 +370,10 @@ const ChatPanel: React.FC = () => {
         const dataset_id = target.getAttribute('data-dataset-id') || undefined
         const document_id = target.getAttribute('data-document-id') || undefined
         const id = target.getAttribute('data-chunk-id') || undefined
-        
-        let references: Reference[] = streamingReferences.length > 0 ? streamingReferences : 
+
+        let references: Reference[] = streamingReferences.length > 0 ? streamingReferences :
           messages.find(msg => msg.references && msg.references.length > refIndex)?.references || []
-        
+
         if (references && references[refIndex]) {
           setSelectedReference({ ...references[refIndex], dataset_id, document_id, id })
         }
@@ -378,6 +420,56 @@ const ChatPanel: React.FC = () => {
     )
   }
 
+  // 彈窗元件
+  const IframeModal: React.FC<{ htmlContent: string, onClose: () => void }> = ({ htmlContent, onClose }) => (
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.4)',
+      zIndex: 2000,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{
+        position: 'relative',
+        width: '80vw',
+        height: '80vh',
+        background: '#fff',
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <button
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 20,
+            background: 'rgba(255,255,255,0.9)',
+            border: 'none',
+            borderRadius: '50%',
+            width: 36,
+            height: 36,
+            fontSize: 22,
+            cursor: 'pointer',
+            zIndex: 10
+          }}
+          onClick={onClose}
+          aria-label="關閉彈窗"
+        >×</button>
+        <iframe
+          srcDoc={htmlContent}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-top-navigation allow-popups"
+          title="Embedded content modal"
+        />
+      </div>
+    </div>
+  )
+
   return (
     <div style={styles.panel}>
       <div style={styles.header}>
@@ -385,44 +477,48 @@ const ChatPanel: React.FC = () => {
       </div>
 
       <div style={styles.content}>
-        <DocumentCard />
 
-        {messages.length > 0 && (
-          <div style={styles.messagesContainer}>
-            {messages.map((message, index) => (
-              <div key={index} style={styles.messageWrapper}>
-                <div style={{
-                  ...styles.message,
-                  ...(message.role === 'user' ? styles.userMessage : styles.assistantMessage)
-                }}>
-                  {message.role === 'assistant' ? 
-                    formatMessageContent(message.content, message.references || []) : 
-                    message.content
-                  }
-                </div>
-              </div>
-            ))}
-            
-            {isSending && (
-              <div style={styles.messageWrapper}>
-                <div style={styles.loadingMessage}>
-                  <div style={styles.loadingDots} className="loading-dots">
-                    <span>.</span><span>.</span><span>.</span>
+        <div style={styles.messagesContainer}>
+          <DocumentCard />
+          {messages.length > 0 && (
+            <>
+              {
+                messages.map((message, index) => (
+                  <div key={index} style={styles.messageWrapper}>
+                    <div style={{
+                      ...styles.message,
+                      ...(message.role === 'user' ? styles.userMessage : styles.assistantMessage)
+                    }}>
+                      {message.role === 'assistant' ?
+                        formatMessageContent(message.content, message.references || []) :
+                        message.content
+                      }
+                    </div>
+                  </div>
+                ))
+              }
+
+              {isSending && (
+                <div style={styles.messageWrapper}>
+                  <div style={styles.loadingMessage}>
+                    <div style={styles.loadingDots} className="loading-dots">
+                      <span>.</span><span>.</span><span>.</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            
-            {streamingContent && (
-              <div style={styles.messageWrapper}>
-                <div style={styles.assistantMessage}>
-                  {formatMessageContent(streamingContent, streamingReferences)}
+              )}
+
+              {streamingContent && (
+                <div style={styles.messageWrapper}>
+                  <div style={styles.assistantMessage}>
+                    {formatMessageContent(streamingContent, streamingReferences)}
+                  </div>
                 </div>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-        )}
+              )}
+              <div ref={chatEndRef} />
+            </>
+          )}
+        </div>
 
         <div style={styles.chatInputSection}>
           <div style={styles.inputWrapper}>
@@ -432,7 +528,7 @@ const ChatPanel: React.FC = () => {
               onSubmit={() => handleSendMessage(inputValue)}
               disabled={isSending}
             />
-            
+
             {messages.length === 0 && (
               <SuggestedQuestions
                 questions={suggestedQuestions}
@@ -449,11 +545,18 @@ const ChatPanel: React.FC = () => {
         </div>
       </div>
 
-      <ReferenceModal 
-        reference={selectedReference} 
+      <ReferenceModal
+        reference={selectedReference}
         onClose={() => setSelectedReference(null)}
         settings={settings}
       />
+
+      {isIframeModalOpen && (
+        <IframeModal
+          htmlContent={modalHtmlContent}
+          onClose={() => setIsIframeModalOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -491,11 +594,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   content: {
     flex: 1,
-    padding: '24px',
+    padding: '8px 16px',
     overflow: 'auto',
     display: 'flex',
     flexDirection: 'column',
-    maxWidth: '800px',
+    maxWidth: '1200px',
     margin: '0 auto',
     width: '100%',
   },
@@ -505,6 +608,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     gap: '16px',
     padding: '24px',
+    margin: '16px',
     background: '#f8f9fa',
     borderRadius: '12px',
     marginBottom: '32px',
@@ -577,7 +681,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: '#f8f9fa',
     borderRadius: '24px',
     padding: '16px 20px',
-    marginBottom: '16px',
+    marginBottom: '8px',
     border: '1px solid #e8eaed',
   },
   chatInput: {
@@ -751,7 +855,7 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   // 底部
   footer: {
-    marginTop: '24px',
+    marginTop: '4px',
     textAlign: 'center',
   },
   footerText: {
@@ -789,4 +893,4 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 }
 
-export default ChatPanel 
+export default ChatPanel
