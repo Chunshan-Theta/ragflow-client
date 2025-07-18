@@ -88,7 +88,7 @@ export const ReferenceModal: React.FC<{
 const DocumentCard: React.FC = () => (
   <div style={styles.documentCard}>
     <div style={styles.documentIcon}>📄</div>
-    <div style={styles.documentInfo}>
+    <div style={{...styles.documentInfo, display: 'none'}}>
       <h2 style={styles.documentTitle}>知識庫🤖</h2>
       <p style={styles.documentMeta}>回應來自於LLM和RAG</p>
       <p style={styles.documentDescription}>🤖</p>
