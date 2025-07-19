@@ -153,6 +153,17 @@ const ChatPanel: React.FC = () => {
   const { messages, streamingContent, streamingReferences, isSending, sendMessage, settings } = useChat()
   const md = new MarkdownIt({ breaks: true })
 
+  const allReferences = useRef<Map<string, Reference>>(new Map());
+  const getRefKey = (ref: Reference) => {
+    return [ref.dataset_id || '<empty>', ref.document_id || '<empty>', ref.id || '<empty>'].filter((d) => d).join('/');
+  }
+  useEffect(() => {
+    streamingReferences.forEach((ref) => {
+      const key = getRefKey(ref);
+      allReferences.current.set(key, ref);
+    })
+  }, [streamingReferences]);
+
   // 格式化引用
   const formatReferences = (textContent: string, references: Reference[] = []): string => {
     // Render markdown first
@@ -371,11 +382,18 @@ const ChatPanel: React.FC = () => {
         const document_id = target.getAttribute('data-document-id') || undefined
         const id = target.getAttribute('data-chunk-id') || undefined
 
-        let references: Reference[] = streamingReferences.length > 0 ? streamingReferences :
-          messages.find(msg => msg.references && msg.references.length > refIndex)?.references || []
+        // let references: Reference[] = streamingReferences.length > 0 ? streamingReferences :
+        //   messages.find(msg => msg.references && msg.references.length > refIndex)?.references || []
 
-        if (references && references[refIndex]) {
-          setSelectedReference({ ...references[refIndex], dataset_id, document_id, id })
+        // if (references && references[refIndex]) {
+        //   setSelectedReference({ ...references[refIndex], dataset_id, document_id, id })
+        // }
+        
+        const reference = allReferences.current.get(getRefKey({
+          dataset_id, document_id, id
+        } as any));
+        if (reference) {
+          setSelectedReference(reference);
         }
       }
     }
