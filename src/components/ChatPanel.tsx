@@ -551,6 +551,7 @@ const ChatPanel: React.FC = () => {
         settings={settings}
       />
 
+      {/* 關閉的按紐 */}
       {isIframeModalOpen && (
         <IframeModal
           htmlContent={modalHtmlContent}
@@ -827,7 +828,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   // iframe
   iframeContainer: {
     width: '100%',
-    height: '300px',
+    height: '700px',
     border: '1px solid #e8eaed',
     borderRadius: '8px',
     overflow: 'hidden',
