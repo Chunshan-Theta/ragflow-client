@@ -1,30 +1,5 @@
 import React, { useState, useEffect } from 'react'
-
-interface Document {
-  id: string
-  name: string
-  type: string
-  create_date: string
-  status: string
-  chunk_count: number
-  size: number
-  run: string
-  location: string
-}
-
-interface Dataset {
-  id: string
-  name: string
-  description?: string | null
-  document_count: number
-  documents?: Document[]
-}
-
-interface Settings {
-  apiUrl: string
-  agentId: string
-  apiKey: string
-}
+import { createDatasetApi, Dataset, Document, Settings } from '../utils/datasetApi'
 
 const SourcePanel: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([])
@@ -60,19 +35,12 @@ const SourcePanel: React.FC = () => {
     if (!settings) return
 
     try {
-      const response = await fetch(`${settings.apiUrl}/api/v1/datasets`, {
-        headers: {
-          'Authorization': `Bearer ${settings.apiKey}`
-        }
-      })
-      
-      const data = await response.json()
-      if (data.code === 0 && Array.isArray(data.data)) {
-        setDatasets(data.data)
-        // 默认选中所有数据集
-        const allIds = new Set<string>(data.data.map((dataset: Dataset) => dataset.id))
-        setSelectedDatasets(allIds)
-      }
+      const datasetApi = createDatasetApi(settings)
+      const datasetsData = await datasetApi.fetchDatasets()
+      setDatasets(datasetsData)
+      // 默认选中所有数据集
+      const allIds = new Set<string>(datasetsData.map((dataset: Dataset) => dataset.id))
+      setSelectedDatasets(allIds)
     } catch (error) {
       console.error('Failed to fetch datasets:', error)
     }
@@ -84,22 +52,11 @@ const SourcePanel: React.FC = () => {
     console.log('Fetching documents for dataset:', datasetId)
     setIsLoadingDocuments(true)
     try {
-      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${datasetId}/documents?page=1&page_size=100`, {
-        headers: {
-          'Authorization': `Bearer ${settings.apiKey}`
-        }
-      })
-      
-      const data = await response.json()
-      console.log('Documents API response:', data)
-      
-      if (data.code === 0 && data.data && Array.isArray(data.data.docs)) {
-        console.log('Setting documents:', data.data.docs.length, 'documents')
-        setDocuments(data.data.docs)
-        setSelectedDatasetId(datasetId)
-      } else {
-        console.log('API response format unexpected:', data)
-      }
+      const datasetApi = createDatasetApi(settings)
+      const documentsData = await datasetApi.fetchDocuments(datasetId)
+      console.log('Setting documents:', documentsData.length, 'documents')
+      setDocuments(documentsData)
+      setSelectedDatasetId(datasetId)
     } catch (error) {
       console.error('Failed to fetch documents:', error)
     } finally {
@@ -143,68 +100,18 @@ const SourcePanel: React.FC = () => {
     setIsUploading(true)
     
     try {
-      const formData = new FormData()
-      selectedFiles.forEach(file => {
-        formData.append('file', file)
-      })
-
-      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${targetDatasetId}/documents`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${settings.apiKey}`
-        },
-        body: formData
-      })
-
-      if (response.ok) {
-        const uploadResult = await response.json()
-        const fileCount = selectedFiles.length
-        console.log('上传成功，文件数量:', fileCount)
-        console.log('上传响应:', uploadResult)
-        
-        // 提取文档ID用于解析
-        let documentIds: string[] = []
-        if (uploadResult.data && Array.isArray(uploadResult.data)) {
-          documentIds = uploadResult.data.map((doc: any) => doc.id)
-        } else if (uploadResult.document_ids && Array.isArray(uploadResult.document_ids)) {
-          documentIds = uploadResult.document_ids
-        }
-        
-        // 自动驱动文档解析
-        if (documentIds.length > 0) {
-          console.log('开始解析文档，文档IDs:', documentIds)
-          try {
-            const parseResponse = await fetch(`${settings.apiUrl}/api/v1/datasets/${targetDatasetId}/chunks`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.apiKey}`
-              },
-              body: JSON.stringify({
-                document_ids: documentIds
-              })
-            })
-            
-            if (parseResponse.ok) {
-              console.log('文档解析已触发')
-            } else {
-              console.error('文档解析失败:', parseResponse.status)
-            }
-          } catch (parseError) {
-            console.error('文档解析请求失败:', parseError)
-          }
-        }
-        
-        fetchDatasets() // 刷新数据集列表
-        setShowUploadModal(false)
-        setSelectedFiles(null)
-        setTargetDatasetId('')
-        alert(`成功上傳 ${fileCount} 個文件，需要等待解析完成才能使用。`)
-      } else {
-        const errorText = await response.text()
-        console.error('Upload failed:', response.status, errorText)
-        throw new Error(`Upload failed: ${response.status}`)
+      const datasetApi = createDatasetApi(settings)
+      const documentIds = await datasetApi.uploadDocuments(targetDatasetId, selectedFiles)
+      
+      if (documentIds.length > 0) {
+        await datasetApi.parseDocuments(targetDatasetId, documentIds)
       }
+      
+      fetchDatasets() // 刷新数据集列表
+      setShowUploadModal(false)
+      setSelectedFiles(null)
+      setTargetDatasetId('')
+      alert(`成功上傳 ${selectedFiles.length} 個文件，需要等待解析完成才能使用。`)
     } catch (error) {
       console.error('Upload failed:', error)
       alert('上传失败，请重试')

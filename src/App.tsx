@@ -5,6 +5,7 @@ import Settings from './components/Settings'
 import NotebookLMPage from './pages/NotebookLMPage'
 import InitAssistantPage from './pages/InitAssistantPage'
 import ChatPage from './pages/ChatPage'
+import DocumentManagementPage from './pages/DocumentManagementPage'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/notebook" element={<NotebookLMPage />} />
         <Route path="/init-assistant" element={<InitAssistantPage />} />
         <Route path="/chat" element={<ChatPage />} />
+        <Route path="/documents" element={<DocumentManagementPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
