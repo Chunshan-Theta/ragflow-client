@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createDatasetApi, Dataset, Document, Settings, Chunk } from '../utils/datasetApi'
+import '../styles/DocumentManagementPage.css'
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
@@ -157,30 +158,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     flex: 1,
     padding: '24px',
     overflow: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
   },
 
-  contentHeader: {
-    marginBottom: '32px',
+  documentsContainer: {
+    display: 'flex',
+    flex: 1,
+    minHeight: 0,
   },
 
-  pageTitle: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    color: '#ffffff',
-    margin: '0 0 8px 0',
+  documentsPanel: {
+    width: '400px',
+    borderRight: '1px solid #3a3d41',
+    padding: '0 20px',
+    overflow: 'auto',
+    height: '100%',
   },
 
-  pageDescription: {
-    fontSize: '14px',
-    color: '#9aa0a6',
-    margin: 0,
-    lineHeight: 1.5,
-  },
-
-  documentGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-    gap: '20px',
+  chunksPanel: {
+    flex: 1,
+    padding: '0 20px',
+    overflow: 'auto',
+    height: '100%',
   },
 
   documentCard: {
@@ -190,6 +190,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '20px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    marginBottom: '16px',
+  },
+
+  selectedDocumentCard: {
+    borderColor: '#ff6b35',
+    backgroundColor: '#3a3d41',
   },
 
   cardHeader: {
@@ -218,155 +224,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#9aa0a6',
   },
 
-  documentDescription: {
-    fontSize: '13px',
-    color: '#9aa0a6',
-    lineHeight: 1.5,
-    marginBottom: '16px',
-  },
-
-  tagsContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-    marginBottom: '12px',
-  },
-
-  tag: {
-    background: '#1a73e8',
-    color: '#ffffff',
-    padding: '4px 8px',
-    borderRadius: '12px',
-    fontSize: '11px',
-  },
-
-  topicFoldersLabel: {
-    fontSize: '12px',
-    color: '#9aa0a6',
-    marginBottom: '8px',
-  },
-
-  topicFoldersContainer: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '6px',
-  },
-
-  topicFolder: {
-    background: '#34a853',
-    color: '#ffffff',
-    padding: '4px 8px',
-    borderRadius: '12px',
-    fontSize: '11px',
-  },
-
-  // 数据集选择样式
-  datasetSection: {
-    marginBottom: '32px',
-  },
-
-  sectionTitle: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#ffffff',
-    margin: '0 0 16px 0',
-  },
-
-  datasetList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-
-  datasetItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '16px',
-    background: '#2a2d31',
-    border: '1px solid #3a3d41',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-
-  selectedDatasetItem: {
-    borderColor: '#ff6b35',
-    backgroundColor: '#3a3d41',
-  },
-
-  datasetIcon: {
-    fontSize: '20px',
-    color: '#1a73e8',
-  },
-
-  datasetInfo: {
-    flex: 1,
-  },
-
-  datasetName: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: '4px',
-  },
-
-  datasetMeta: {
-    fontSize: '12px',
-    color: '#9aa0a6',
-    marginBottom: '4px',
-  },
-
-  datasetDescription: {
-    fontSize: '12px',
-    color: '#9aa0a6',
-    lineHeight: 1.4,
-  },
-
-  datasetArrow: {
-    fontSize: '18px',
-    color: '#9aa0a6',
-    fontWeight: 'bold',
-  },
-
-  sectionHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '16px',
-  },
-
-  backButton: {
-    background: 'transparent',
-    border: '1px solid #3a3d41',
-    borderRadius: '6px',
-    padding: '8px 16px',
-    color: '#9aa0a6',
-    cursor: 'pointer',
-    fontSize: '14px',
-    transition: 'all 0.2s ease',
-  },
-
-  // 文档列表样式
-  documentsSection: {
-    marginBottom: '32px',
-  },
-
-  loadingDocuments: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '40px 0',
-    color: '#9aa0a6',
-  },
-
-  noDocuments: {
-    textAlign: 'center',
-    padding: '40px 0',
-    color: '#9aa0a6',
-    fontSize: '14px',
-  },
-
   chunksInfo: {
     display: 'flex',
     gap: '16px',
@@ -389,11 +246,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '12px',
   },
 
+  loadingDocuments: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '40px 0',
+    color: '#9aa0a6',
+  },
 
-
-  // Chunks样式
-  chunksSection: {
-    marginBottom: '32px',
+  noDocuments: {
+    textAlign: 'center',
+    padding: '40px 0',
+    color: '#9aa0a6',
+    fontSize: '14px',
   },
 
   chunksList: {
@@ -482,17 +347,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '8px',
   },
 
-  debugInfo: {
-    fontSize: '12px',
-    color: '#ff6b35',
-    background: '#1a1d21',
-    padding: '8px',
-    borderRadius: '4px',
-    marginBottom: '16px',
-    border: '1px solid #ff6b35',
-  },
-
-  // 模态窗口样式
   modalOverlay: {
     position: 'fixed',
     top: 0,
@@ -530,93 +384,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     margin: '0 0 20px 0',
   },
 
-  datasetSelect: {
-    marginBottom: '20px',
-  },
-
-  datasetOption: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '12px',
-    border: '1px solid #e8eaed',
-    borderRadius: '8px',
-    marginBottom: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-
-  selectedOption: {
-    borderColor: '#1a73e8',
-    backgroundColor: '#e8f0fe',
-  },
-
-  optionIcon: {
-    fontSize: '16px',
-    width: '20px',
-    textAlign: 'center',
-  },
-
-  optionInfo: {
-    flex: 1,
-  },
-
-  optionName: {
-    fontSize: '14px',
-    fontWeight: 500,
-    color: '#202124',
-    marginBottom: '2px',
-  },
-
-  optionMeta: {
-    fontSize: '12px',
-    color: '#5f6368',
-  },
-
-  radioButton: {
-    color: '#1a73e8',
-  },
-
-  fileInfo: {
-    marginBottom: '20px',
-    padding: '16px',
-    background: '#f8f9fa',
-    borderRadius: '8px',
-  },
-
-  fileInfoText: {
-    fontSize: '14px',
-    fontWeight: 500,
-    color: '#202124',
-    margin: '0 0 12px 0',
-  },
-
-  fileList: {
-    maxHeight: '120px',
-    overflow: 'auto',
-  },
-
-  fileItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '4px 0',
-    fontSize: '13px',
-  },
-
-  fileName: {
-    color: '#202124',
-    flex: 1,
-    textOverflow: 'ellipsis',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
-  },
-
-  fileSize: {
-    color: '#5f6368',
-    marginLeft: '8px',
-  },
-
   modalButtons: {
     display: 'flex',
     gap: '12px',
@@ -647,6 +414,91 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: '#dadce0',
     color: '#9aa0a6',
     cursor: 'not-allowed',
+  },
+
+  // Dataset styles (updated)
+  datasetSection: {
+    marginBottom: '24px',
+  },
+
+  sectionTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    margin: '0 0 16px 0',
+  },
+
+  datasetList: {
+    display: 'flex',
+    gap: '12px',
+    overflowX: 'auto',
+    paddingBottom: '12px',
+  },
+
+  datasetItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '16px',
+    background: '#2a2d31',
+    border: '1px solid #3a3d41',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    minWidth: '300px',
+    flexShrink: 0,
+  },
+
+  selectedDatasetItem: {
+    borderColor: '#ff6b35',
+    backgroundColor: '#3a3d41',
+  },
+
+  datasetIcon: {
+    fontSize: '20px',
+    color: '#1a73e8',
+    flexShrink: 0,
+  },
+
+  datasetInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  datasetName: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: '4px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+
+  datasetMeta: {
+    fontSize: '12px',
+    color: '#9aa0a6',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+
+  datasetDescription: {
+    fontSize: '12px',
+    color: '#9aa0a6',
+    lineHeight: 1.4,
+    display: '-webkit-box',
+    WebkitLineClamp: '2',
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+
+  datasetArrow: {
+    fontSize: '18px',
+    color: '#9aa0a6',
+    fontWeight: 'bold',
+    flexShrink: 0,
   },
 }
 
@@ -930,17 +782,13 @@ const DocumentManagementPage: React.FC = () => {
 
         {/* 主要内容区域 */}
         <div style={styles.content}>
-          <div style={styles.contentHeader}>
-            <h1 style={styles.pageTitle}>文檔管理</h1>
-            <p style={styles.pageDescription}>
-              管理文檔並查看 AI 自動生成的議題歸類,每篇文檔可同時歸屬多個議題資料夾
-            </p>
-          </div>
-
           {/* 知识库选择 */}
           <div style={styles.datasetSection}>
             <h3 style={styles.sectionTitle}>知識庫</h3>
-            <div style={styles.datasetList}>
+            <div 
+              style={styles.datasetList}
+              className="hide-scrollbar"  // We'll handle scrollbar hiding via CSS
+            >
               {datasets.map((dataset) => (
                 <div 
                   key={dataset.id}
@@ -968,203 +816,176 @@ const DocumentManagementPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 文档列表 */}
-          {selectedDatasetId && !selectedDocumentId && (
-            <div style={styles.documentsSection}>
-              <div style={styles.sectionHeader}>
-                <h3 style={styles.sectionTitle}>
-                  文檔列表 - {datasets.find(d => d.id === selectedDatasetId)?.name}
-                </h3>
-                <button 
-                  style={styles.backButton}
-                  onClick={() => {
-                    setSelectedDatasetId(null)
-                    setDocuments([])
-                    setSelectedDocumentId(null)
-                    setChunks([])
-                  }}
-                >
-                  ← 返回知識庫
-                </button>
+          {/* 文檔和Chunks容器 */}
+          <div style={styles.documentsContainer}>
+            {/* 左側文檔列表 */}
+            <div style={styles.documentsPanel}>
+              <div style={styles.contentHeader}>
+                <h1 style={styles.pageTitle}>文檔列表</h1>
+                {selectedDatasetId && (
+                  <p style={styles.pageDescription}>
+                    {datasets.find(d => d.id === selectedDatasetId)?.name}
+                  </p>
+                )}
               </div>
+
               {isLoadingDocuments ? (
                 <div style={styles.loadingDocuments}>
                   <div style={styles.spinner}></div>
                   <span>載入文件中...</span>
                 </div>
               ) : (
-                <div style={styles.documentGrid}>
-                  {documents.length > 0 ? (
-                    documents.map((doc) => (
-                      <div 
-                        key={doc.id} 
-                        style={styles.documentCard}
-                        onClick={() => handleDocumentClick(doc.id)}
-                      >
-                        <div style={styles.cardHeader}>
-                          <div style={styles.documentIcon}>📄</div>
-                          <div style={styles.documentTitle}>{doc.name}</div>
-                          <div style={styles.documentMeta}>
-                            {doc.type} • {doc.create_date} • {doc.chunk_count} chunks • {Math.round(doc.size / 1024)} KB
-                          </div>
-                        </div>
-                        
-                        <div style={styles.documentDescription}>
-                          文件類型: {doc.type} | 狀態: {doc.status} | 位置: {doc.location}
-                        </div>
-                        
-                        <div style={styles.chunksInfo}>
-                          <span style={styles.chunksLabel}>Chunks: {doc.chunk_count}</span>
-                          <span style={styles.sizeLabel}>大小: {Math.round(doc.size / 1024)} KB</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div style={styles.noDocuments}>
-                      暫無文件
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Chunks列表 */}
-          {selectedDocumentId && (
-            <div style={styles.chunksSection}>
-              <div style={styles.sectionHeader}>
-                <h3 style={styles.sectionTitle}>
-                  Chunks - {documents.find(d => d.id === selectedDocumentId)?.name || '未知文檔'}
-                </h3>
-                <button 
-                  style={styles.backButton}
-                  onClick={() => {
-                    setSelectedDocumentId(null)
-                    setChunks([])
-                  }}
-                >
-                  ← 返回文檔列表
-                </button>
-              </div>
-              <div style={styles.debugInfo}>
-                Debug: selectedDocumentId = {selectedDocumentId}, chunks.length = {chunks.length}, isLoadingChunks = {isLoadingChunks.toString()}
-              </div>
-              {/* 關鍵字統計區塊 */}
-              {chunks.length > 0 && (
-                <div style={{
-                  marginBottom: '20px',
-                  padding: '16px',
-                  background: '#23272b',
-                  borderRadius: '8px',
-                  border: '1px solid #3a3d41',
-                  color: '#fff',
-                  fontSize: '14px',
-                }}>
-                  <div style={{display: 'flex', alignItems: 'center', marginBottom: 8}}>
-                    <span style={{ fontWeight: 600 }}>所有重要關鍵字統計：</span>
-                    <button
+                <div>
+                  {documents.map((doc) => (
+                    <div 
+                      key={doc.id} 
                       style={{
-                        marginLeft: 12,
-                        background: 'none',
-                        border: 'none',
-                        color: '#1a73e8',
-                        cursor: 'pointer',
-                        fontSize: 13,
+                        ...styles.documentCard,
+                        ...(selectedDocumentId === doc.id ? styles.selectedDocumentCard : {})
                       }}
-                      onClick={() => setShowKeywords(v => !v)}
+                      onClick={() => handleDocumentClick(doc.id)}
                     >
-                      {showKeywords ? '收合 ▲' : '展開 ▼'}
-                    </button>
-                    {selectedKeywords.length > 0 && (
-                      <button
-                        style={{
-                          marginLeft: 12,
-                          background: '#ff6b35',
-                          border: 'none',
-                          color: '#fff',
-                          borderRadius: 8,
-                          padding: '2px 10px',
-                          cursor: 'pointer',
-                          fontSize: 12,
-                        }}
-                        onClick={() => setSelectedKeywords([])}
-                      >
-                        清除篩選
-                      </button>
-                    )}
-                  </div>
-                  {showKeywords && keywordCountBlock}
-                </div>
-              )}
-              {isLoadingChunks ? (
-                <div style={styles.loadingDocuments}>
-                  <div style={styles.spinner}></div>
-                  <span>載入chunks中...</span>
-                </div>
-              ) : (
-                <div style={styles.chunksList}>
-                  {filteredChunks.length > 0 ? (
-                    filteredChunks.map((chunk, index) => (
-                      <div key={chunk.id} style={styles.chunkCard}>
-                        <div style={styles.chunkHeader}>
-                          <div style={styles.chunkIcon}>🔗</div>
-                          <div style={styles.chunkTitle}>Chunk #{index + 1}</div>
-                          <div style={styles.chunkMeta}>
-                            ID: {chunk.id} • 可用: {chunk.available ? '是' : '否'}
-                          </div>
-                        </div>
-                        
-                        <div style={styles.chunkContent}>
-                          {chunk.content}
-                        </div>
-                        
-                        <div style={styles.chunkMetadata}>
-                          <div style={styles.metadataRow}>
-                            <span style={styles.metadataLabel}>文檔名稱:</span>
-                            <span style={styles.metadataContent}>{chunk.docnm_kwd}</span>
-                          </div>
-                          <div style={styles.metadataRow}>
-                            <span style={styles.metadataLabel}>重要關鍵字:</span>
-                            <span style={styles.metadataContent}>
-                              {chunk.important_keywords && chunk.important_keywords.length > 0 
-                                ? chunk.important_keywords.join(', ') 
-                                : '(空)'}
-                            </span>
-                          </div>
-                          <div style={styles.metadataRow}>
-                            <span style={styles.metadataLabel}>問題:</span>
-                            <span style={styles.metadataContent}>
-                              {chunk.questions && chunk.questions.length > 0 
-                                ? chunk.questions.join(', ') 
-                                : '(空)'}
-                            </span>
-                          </div>
-                          <div style={{...styles.metadataRow, display: 'none'}}>
-                            <span style={styles.metadataLabel}>位置資訊:</span>
-                            <span style={styles.metadataContent}>
-                              {chunk.positions && chunk.positions.length > 0 
-                                ? JSON.stringify(chunk.positions) 
-                                : '(空)'}
-                            </span>
-                          </div>
-                          <div style={{...styles.metadataRow, display: 'none'}}>
-                            <span style={styles.metadataLabel}>圖片ID:</span>
-                            <span style={styles.metadataContent}>
-                              {chunk.image_id || '(空)'}
-                            </span>
-                          </div>
-                        </div>
+                      <div style={styles.cardHeader}>
+                        <div style={styles.documentIcon}>📄</div>
+                        <div style={styles.documentTitle}>{doc.name}</div>
                       </div>
-                    ))
-                  ) : (
-                    <div style={styles.noDocuments}>
-                      無符合篩選的 chunks
+                      
+                      <div style={styles.documentMeta}>
+                        {doc.type} • {doc.create_date}
+                      </div>
+                      
+                      <div style={styles.chunksInfo}>
+                        <span style={styles.chunksLabel}>Chunks: {doc.chunk_count}</span>
+                        <span style={styles.sizeLabel}>大小: {Math.round(doc.size / 1024)} KB</span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
-          )}
+
+            {/* 右側Chunks列表 */}
+            <div style={styles.chunksPanel}>
+              {selectedDocumentId ? (
+                <>
+                  <div style={styles.contentHeader}>
+                    <h1 style={styles.pageTitle}>
+                      {documents.find(d => d.id === selectedDocumentId)?.name || '未知文檔'}
+                    </h1>
+                  </div>
+
+                  {/* 關鍵字統計區塊 */}
+                  {chunks.length > 0 && (
+                    <div style={{
+                      marginBottom: '20px',
+                      padding: '16px',
+                      background: '#23272b',
+                      borderRadius: '8px',
+                      border: '1px solid #3a3d41',
+                      color: '#fff',
+                      fontSize: '14px',
+                    }}>
+                      <div style={{display: 'flex', alignItems: 'center', marginBottom: 8}}>
+                        <span style={{ fontWeight: 600 }}>所有重要關鍵字統計：</span>
+                        <button
+                          style={{
+                            marginLeft: 12,
+                            background: 'none',
+                            border: 'none',
+                            color: '#1a73e8',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                          }}
+                          onClick={() => setShowKeywords(v => !v)}
+                        >
+                          {showKeywords ? '收合 ▲' : '展開 ▼'}
+                        </button>
+                        {selectedKeywords.length > 0 && (
+                          <button
+                            style={{
+                              marginLeft: 12,
+                              background: '#ff6b35',
+                              border: 'none',
+                              color: '#fff',
+                              borderRadius: 8,
+                              padding: '2px 10px',
+                              cursor: 'pointer',
+                              fontSize: 12,
+                            }}
+                            onClick={() => setSelectedKeywords([])}
+                          >
+                            清除篩選
+                          </button>
+                        )}
+                      </div>
+                      {showKeywords && keywordCountBlock}
+                    </div>
+                  )}
+
+                  {isLoadingChunks ? (
+                    <div style={styles.loadingDocuments}>
+                      <div style={styles.spinner}></div>
+                      <span>載入chunks中...</span>
+                    </div>
+                  ) : (
+                    <div style={styles.chunksList}>
+                      {filteredChunks.length > 0 ? (
+                        filteredChunks.map((chunk, index) => (
+                          <div key={chunk.id} style={styles.chunkCard}>
+                            <div style={styles.chunkHeader}>
+                              <div style={styles.chunkIcon}>🔗</div>
+                              <div style={styles.chunkTitle}>Chunk #{index + 1}</div>
+                              <div style={styles.chunkMeta}>
+                                ID: {chunk.id} • 可用: {chunk.available ? '是' : '否'}
+                              </div>
+                            </div>
+                            
+                            <div style={styles.chunkContent}>
+                              {chunk.content}
+                            </div>
+                            
+                            <div style={styles.chunkMetadata}>
+                              <div style={styles.metadataRow}>
+                                <span style={styles.metadataLabel}>重要關鍵字:</span>
+                                <span style={styles.metadataContent}>
+                                  {chunk.important_keywords && chunk.important_keywords.length > 0 
+                                    ? chunk.important_keywords.join(', ') 
+                                    : '(空)'}
+                                </span>
+                              </div>
+                              <div style={styles.metadataRow}>
+                                <span style={styles.metadataLabel}>問題:</span>
+                                <span style={styles.metadataContent}>
+                                  {chunk.questions && chunk.questions.length > 0 
+                                    ? chunk.questions.join(', ') 
+                                    : '(空)'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div style={styles.noDocuments}>
+                          無符合篩選的 chunks
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  color: '#9aa0a6',
+                  fontSize: '14px'
+                }}>
+                  請選擇左側文檔以查看內容
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
