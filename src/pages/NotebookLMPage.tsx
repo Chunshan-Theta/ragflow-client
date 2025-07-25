@@ -4,14 +4,6 @@ import ChatPanel from '../components/ChatPanel'
 import '../styles/animations.css'
 import AgentSelector from '../components/AgentSelector'
 
-interface Agent {
-  id: string
-  name: string
-  description: string
-  icon: string
-  color: string
-  status: 'online' | 'offline' | 'busy'
-}
 
 const NotebookLMPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
