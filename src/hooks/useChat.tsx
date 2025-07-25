@@ -34,12 +34,14 @@ export const useChat = () => {
   const sessionCreatedRef = useRef(false)
   const initialMessageSentRef = useRef(false)
 
+  const showDebugInfo = useRef(false)
+
   // Validate settings completeness
   const isValidSettings = (settings: any): settings is Settings => {
-    return settings && 
-           typeof settings.apiUrl === 'string' && settings.apiUrl.trim() !== '' &&
-           typeof settings.agentId === 'string' && settings.agentId.trim() !== '' &&
-           typeof settings.apiKey === 'string' && settings.apiKey.trim() !== ''
+    return settings &&
+      typeof settings.apiUrl === 'string' && settings.apiUrl.trim() !== '' &&
+      typeof settings.agentId === 'string' && settings.agentId.trim() !== '' &&
+      typeof settings.apiKey === 'string' && settings.apiKey.trim() !== ''
   }
 
   const createSession = useCallback(async () => {
@@ -47,7 +49,7 @@ export const useChat = () => {
 
     sessionCreatedRef.current = true
     setIsLoading(true)
-    
+
     try {
       const response = await fetch(`${settings.apiUrl}/api/v1/agents/${settings.agentId}/sessions`.replace(/([^:]\/)\/+/g, "$1"), {
         method: "POST",
@@ -59,9 +61,9 @@ export const useChat = () => {
         },
         body: JSON.stringify({})
       })
-      
+
       const data = await response.json()
-      
+
       if (data.code === 0) {
         setSessionId(data.data.id)
       } else {
@@ -76,17 +78,17 @@ export const useChat = () => {
 
   const sendMessage = useCallback(async (message: string, isInitial: boolean = false) => {
     if (!message || !sessionId || !settings || isSending) return
-    
+
     setIsSending(true)
-    
+
     if (!isInitial) {
       const userMessage: Message = { role: "user", content: message }
       setMessages(prev => [...prev, userMessage])
     }
-    
+
     setStreamingContent("")
     setStreamingReferences([])
-    
+
     try {
       const requestBody = {
         question: message,
@@ -122,7 +124,7 @@ export const useChat = () => {
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split("\n")
         buffer = lines.pop() || ""
-          
+
         for (const line of lines) {
           if (line.startsWith("data:")) {
             const data = line.slice(5).trim()
@@ -133,7 +135,7 @@ export const useChat = () => {
 
             try {
               const parsed = JSON.parse(data)
-              
+
               // Handle different response formats
               if (parsed.data) {
                 if (parsed.data.answer !== undefined) {
@@ -155,9 +157,15 @@ export const useChat = () => {
                       id: chunk.id
                     }))
                     setStreamingReferences(accumulatedReferences)
+                    if (showDebugInfo.current) {
+                      console.log('Streaming references1:', { chunks: accumulatedReferences })
+                    }
                   } else if (Array.isArray(parsed.data.reference)) {
                     accumulatedReferences = [...accumulatedReferences, ...parsed.data.reference]
                     setStreamingReferences(accumulatedReferences)
+                    if (showDebugInfo.current) {
+                      console.log('Streaming references2:', { prev: accumulatedReferences, refArr: parsed.data.reference })
+                    }
                   }
                 }
               }
@@ -193,10 +201,10 @@ export const useChat = () => {
           content: accumulatedContent,
           references: accumulatedReferences
         }
-        
+
         // Add the final message and clear streaming content immediately
         setMessages(prev => [...prev, finalMessage])
-        
+
         setStreamingContent("")
         setStreamingReferences([])
       } else {
@@ -215,14 +223,14 @@ export const useChat = () => {
   // Load settings from localStorage
   const loadSettings = useCallback(() => {
     const savedSettings = localStorage.getItem('chatSettings')
-    
+
     if (!savedSettings) {
       return
     }
 
     try {
       const parsedSettings = JSON.parse(savedSettings)
-      
+
       if (isValidSettings(parsedSettings)) {
         setSettings(parsedSettings)
       }
@@ -269,7 +277,7 @@ export const useChat = () => {
       setMessages([])
       setStreamingContent("")
       setStreamingReferences([])
-      
+
       createSession()
     }
   }, [settings?.agentId, createSession])

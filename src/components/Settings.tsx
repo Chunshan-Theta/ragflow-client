@@ -25,7 +25,7 @@ const Settings: React.FC = () => {
   })
 
   const [agents, setAgents] = useState<Agent[]>([])
-  const [selectedAgent, setSelectedAgent] = useState<string>("")
+  const [selectedAgent, setSelectedAgent] = useState<string>(process.env.REACT_APP_DEFAULT_AGENT_ID || "")
   const [settingsStep, setSettingsStep] = useState<'credentials' | 'agent'>('credentials')
   const [hoveredAgentId, setHoveredAgentId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -37,8 +37,17 @@ const Settings: React.FC = () => {
     });
   };
   const init = async () => {
-    await saveToStorage(settings);
-    navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page || 'chat'));
+    // If we have a default agentId, use it directly
+    if (process.env.REACT_APP_DEFAULT_AGENT_ID) {
+      const finalSettings = {
+        ...settings,
+        agentId: process.env.REACT_APP_DEFAULT_AGENT_ID
+      }
+      await saveToStorage(finalSettings);
+      navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page || 'chat'));
+      return;
+    }
+    
   };
 
   useEffect(() => {

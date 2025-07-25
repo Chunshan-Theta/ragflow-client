@@ -118,24 +118,24 @@ const AssistantSettingsModal: React.FC<{
         }}
       >
         <Form.Item name={['prompt', 'empty_response']} label="Empty Response">
-          <Input.TextArea 
+          <Input.TextArea
             rows={3}
-            placeholder="Response when no relevant content is found" 
+            placeholder="Response when no relevant content is found"
           />
         </Form.Item>
-        
-        <Form.Item name={['prompt', 'opener']} label="Opening Message" style={{display: 'none'}}>
-          <Input.TextArea 
+
+        <Form.Item name={['prompt', 'opener']} label="Opening Message" style={{ display: 'none' }}>
+          <Input.TextArea
             rows={2}
-            placeholder="Hi! I am your assistant, can I help you?" 
+            placeholder="Hi! I am your assistant, can I help you?"
             value="請開始對話"
           />
         </Form.Item>
-        
+
         <Form.Item name={['prompt', 'prompt']} label="Custom Prompt">
-          <Input.TextArea 
-            rows={4} 
-            placeholder="Enter custom prompt instructions" 
+          <Input.TextArea
+            rows={4}
+            placeholder="Enter custom prompt instructions"
           />
         </Form.Item>
       </Form>
@@ -166,11 +166,22 @@ const ChatPage: React.FC = () => {
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState<ChatAssistant | null>(null);
 
+  const allReferences = useRef<Map<string, Reference>>(new Map());
+  const getRefKey = (ref: Reference) => {
+    return [ref.dataset_id || '<empty>', ref.document_id || '<empty>', ref.id || '<empty>'].filter((d) => d).join('/');
+  }
+  useEffect(() => {
+    streamingReferences.forEach((ref) => {
+      const key = getRefKey(ref);
+      allReferences.current.set(key, ref);
+    })
+  }, [streamingReferences]);
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
     };
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -205,7 +216,7 @@ const ChatPage: React.FC = () => {
           'Authorization': `Bearer ${settings.apiKey}`
         }
       });
-      
+
       const data = await response.json();
       if (data.code === 0 && Array.isArray(data.data)) {
         setDatasets(data.data);
@@ -282,7 +293,7 @@ const ChatPage: React.FC = () => {
       const uploadData = await response.json();
       if (uploadData.code === 0) {
         message.success(`Successfully uploaded ${selectedFiles.length} files`);
-        
+
         let documentIds: string[] = [];
         if (uploadData.data) {
           if (Array.isArray(uploadData.data)) {
@@ -297,7 +308,7 @@ const ChatPage: React.FC = () => {
         if (documentIds.length > 0) {
           await parseDocuments(documentIds);
         }
-        
+
         setSelectedFiles(null);
         const fileInput = document.getElementById('fileInput') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
@@ -434,7 +445,7 @@ const ChatPage: React.FC = () => {
 
     const userMessage = { role: 'user' as const, content: inputMessage };
     const assistantMessage = { role: 'assistant' as const, content: '' };
-    
+
     // Add user message and create a placeholder for assistant message
     setMessages(prev => [...prev, userMessage, assistantMessage]);
     setInputMessage('');
@@ -493,10 +504,10 @@ const ChatPage: React.FC = () => {
                 lastAnswer = data.data.answer;
                 setMessages(prev => [
                   ...prev.slice(0, -1), // Keep all previous messages including user's
-                  { 
-                    role: 'assistant', 
+                  {
+                    role: 'assistant',
                     content: lastAnswer,
-                    references: accumulatedReferences 
+                    references: accumulatedReferences
                   } // Update only the assistant's message
                 ]);
               }
@@ -547,7 +558,7 @@ const ChatPage: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`;
     });
-    
+
     // Handle (ID:n) format
     html = html.replace(/\(ID:(\d+)\)/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10);
@@ -557,7 +568,7 @@ const ChatPage: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`;
     });
-    
+
     // Handle ##n$$ format
     html = html.replace(/##(\d+)\$\$/g, (match: string, index: string) => {
       const refIndex = parseInt(index, 10);
@@ -567,7 +578,7 @@ const ChatPage: React.FC = () => {
       }
       return `<span style="color: #f87171;">[?]</span>`;
     });
-    
+
     return html;
   };
 
@@ -580,13 +591,21 @@ const ChatPage: React.FC = () => {
         const dataset_id = target.getAttribute('data-dataset-id') || undefined;
         const document_id = target.getAttribute('data-document-id') || undefined;
         const id = target.getAttribute('data-chunk-id') || undefined;
-        
-        let references: Reference[] = streamingReferences.length > 0 ? streamingReferences : 
-          messages.find(msg => msg.references && msg.references.length > refIndex)?.references || [];
-        
-        if (references && references[refIndex]) {
-          setSelectedReference({ ...references[refIndex], dataset_id, document_id, id });
+
+        // let references: Reference[] = streamingReferences.length > 0 ? streamingReferences :
+        //   messages.find(msg => msg.references && msg.references.length > refIndex)?.references || [];
+
+        // if (references && references[refIndex]) {
+        //   setSelectedReference({ ...references[refIndex], dataset_id, document_id, id });
+        // }
+
+        const reference = allReferences.current.get(getRefKey({
+          dataset_id, document_id, id
+        } as any));
+        if (reference) {
+          setSelectedReference(reference);
         }
+
       }
     };
 
@@ -699,8 +718,8 @@ const ChatPage: React.FC = () => {
               renderItem={item => (
                 <List.Item onClick={() => createChatSession(item)} style={styles.chatItem}>
                   <Text>{item.name}</Text>
-                  <Button 
-                    size="small" 
+                  <Button
+                    size="small"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditAssistant(item);
@@ -803,7 +822,7 @@ const ChatPage: React.FC = () => {
   return (
     <div style={styles.container}>
       {/* Left Sidebar Toggle Button */}
-      <button 
+      <button
         style={styles.toggleButton}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
       >
@@ -811,7 +830,7 @@ const ChatPage: React.FC = () => {
       </button>
 
       {/* Right Sidebar Toggle Button */}
-      <button 
+      <button
         style={styles.rightToggleButton}
         onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
       >
@@ -1000,13 +1019,13 @@ const ChatPage: React.FC = () => {
             loading={loading}
             dataSource={chatAssistants}
             renderItem={item => (
-              <List.Item 
-                onClick={() => createChatSession(item)} 
+              <List.Item
+                onClick={() => createChatSession(item)}
                 className={`chat-item ${selectedAssistant?.id === item.id ? 'selected' : ''}`}
                 actions={[
-                  <Button 
-                    key="edit" 
-                    size="small" 
+                  <Button
+                    key="edit"
+                    size="small"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditAssistant(item);
@@ -1024,7 +1043,7 @@ const ChatPage: React.FC = () => {
       </div>
 
       {/* Add ReferenceModal */}
-      <ReferenceModal 
+      <ReferenceModal
         reference={selectedReference}
         onClose={() => setSelectedReference(null)}
         settings={settings}
@@ -1053,7 +1072,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     position: 'relative',
     overflow: 'hidden'
   },
-  
+
   toggleButton: {
     position: 'fixed',
     left: '10px',
@@ -1280,7 +1299,7 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   citationContainer: {
     marginTop: '8px',
-    display: 'flex',
+    display: 'none',
     alignItems: 'center',
   },
 
