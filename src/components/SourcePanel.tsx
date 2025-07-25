@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { createDatasetApi, Dataset, Document, Settings } from '../utils/datasetApi'
 
 const SourcePanel: React.FC = () => {
+  const navigate = useNavigate()
   const [datasets, setDatasets] = useState<Dataset[]>([])
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set())
   const [isUploading, setIsUploading] = useState(false)
@@ -203,6 +205,17 @@ const SourcePanel: React.FC = () => {
             {/* 显示文档列表 */}
             {selectedDatasetId === dataset.id && (
               <div style={styles.documentsContainer}>
+                {/* 文档管理导航按钮 */}
+                <div style={styles.documentManagementButton}>
+                  <button
+                    style={styles.manageDocsButton}
+                    onClick={() => navigate('/documents')}
+                  >
+                    <span style={styles.manageDocsIcon}>⚙️</span>
+                    <span>管理文檔</span>
+                  </button>
+                </div>
+                
                 {isLoadingDocuments ? (
                   <div style={styles.loadingDocuments}>
                     <div style={styles.spinner}></div>
@@ -739,6 +752,33 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: 'center',
     padding: '20px 0',
     color: '#9aa0a6',
+  },
+
+  documentManagementButton: {
+    padding: '12px 0',
+    borderBottom: '1px solid #e8eaed',
+    marginBottom: '8px',
+  },
+
+  manageDocsButton: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 12px',
+    background: '#4285f4',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
+    width: '100%',
+    justifyContent: 'center',
+  },
+
+  manageDocsIcon: {
+    fontSize: '14px',
   },
 }
 
