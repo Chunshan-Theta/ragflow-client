@@ -1,4 +1,4 @@
-# React Chatbot UI
+# ragflow-client
 
 A modern, responsive chatbot interface built with React and TypeScript. This application provides an intuitive chat experience with agent selection, knowledge base integration, and source document management.
 
