@@ -734,8 +734,8 @@ const DocumentManagementPage: React.FC = () => {
             <div style={styles.logoIcon}>C</div>
           </div>
           <div style={styles.headerText}>
-            <div style={styles.mainTitle}>CDRI AI 產業商情資訊網</div>
-            <div style={styles.subTitle}>後台管理系統・商業研究院</div>
+            <div style={styles.mainTitle}>後台管理系統</div>
+            <div style={styles.subTitle}>文件處理後台</div>
           </div>
         </div>
         <div style={styles.headerRight}>
