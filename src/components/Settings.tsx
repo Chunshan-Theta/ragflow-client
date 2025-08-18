@@ -44,10 +44,10 @@ const Settings: React.FC = () => {
         agentId: process.env.REACT_APP_DEFAULT_AGENT_ID
       }
       await saveToStorage(finalSettings);
-      navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page || 'chat'));
-      return;
     }
-    
+    if(process.env.REACT_APP_DEFAULT_Home_page){
+      navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page));
+    }
   };
 
   useEffect(() => {
