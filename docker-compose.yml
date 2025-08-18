@@ -2,7 +2,13 @@ version: '3.8'
 
 services:
   frontend:
-    build: .
+    build:
+      context: .
+      args:
+        REACT_APP_DEFAULT_API_URL: ${REACT_APP_DEFAULT_API_URL}
+        REACT_APP_DEFAULT_AGENT_ID: ${REACT_APP_DEFAULT_AGENT_ID}
+        REACT_APP_DEFAULT_API_KEY: ${REACT_APP_DEFAULT_API_KEY}
+        REACT_APP_DEFAULT_Home_page: ${REACT_APP_DEFAULT_Home_page}
     ports:
       - "3000:80"
     container_name: chatbot-frontend
