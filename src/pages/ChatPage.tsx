@@ -697,6 +697,7 @@ const ChatPage: React.FC = () => {
                       multiple
                       onChange={handleFileChange}
                       style={{ marginBottom: '10px' }}
+                      accept=".pdf,.doc,.docx,.txt,.md,.csv"
                     />
                     <Button
                       type="primary"
@@ -879,7 +880,7 @@ const ChatPage: React.FC = () => {
                 multiple
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
-                accept=".pdf,.doc,.docx,.txt,.md"
+                accept=".pdf,.doc,.docx,.txt,.md,.csv"
               />
               <label
                 htmlFor="fileInput"

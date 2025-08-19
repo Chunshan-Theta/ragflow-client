@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createDatasetApi, Dataset, Document, Settings } from '../utils/datasetApi'
+import UploadModal from './UploadModal'
 
 const SourcePanel: React.FC = () => {
   const navigate = useNavigate()
@@ -161,7 +162,7 @@ const SourcePanel: React.FC = () => {
               multiple
               onChange={handleFileSelect}
               style={styles.hiddenInput}
-              accept=".pdf,.doc,.docx,.txt,.md"
+              accept=".pdf,.doc,.docx,.txt,.md,.csv"
             />
             <span style={styles.addIcon}>+</span> 新增
           </label>
@@ -266,84 +267,16 @@ const SourcePanel: React.FC = () => {
       )}
 
       {/* 上传模态窗口 */}
-      {showUploadModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>選擇知識庫</h3>
-            <p style={styles.modalDescription}>
-              選擇要上傳參考資料的知識庫：
-            </p>
-            
-            {/* 知识库选择 */}
-            <div style={styles.datasetSelect}>
-              {datasets.map((dataset) => (
-                <div
-                  key={dataset.id}
-                  style={{
-                    ...styles.datasetOption,
-                    ...(targetDatasetId === dataset.id ? styles.selectedOption : {})
-                  }}
-                  onClick={() => setTargetDatasetId(dataset.id)}
-                >
-                  <div style={styles.optionIcon}>📄</div>
-                  <div style={styles.optionInfo}>
-                    <div style={styles.optionName}>{dataset.name}</div>
-                    <div style={styles.optionMeta}>
-                      {dataset.document_count} 個參考資料
-                    </div>
-                  </div>
-                  <div style={styles.radioButton}>
-                    <input
-                      type="radio"
-                      checked={targetDatasetId === dataset.id}
-                      onChange={() => setTargetDatasetId(dataset.id)}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* 文件信息 */}
-            {selectedFiles && (
-              <div style={styles.fileInfo}>
-                <p style={styles.fileInfoText}>
-                  將上傳 {selectedFiles.length} 個文件：
-                </p>
-                <div style={styles.fileList}>
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} style={styles.fileItem}>
-                      <span style={styles.fileName}>{file.name}</span>
-                      <span style={styles.fileSize}>
-                        ({Math.round(file.size / 1024)} KB)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* 按钮 */}
-            <div style={styles.modalButtons}>
-              <button
-                style={styles.cancelButton}
-                onClick={handleUploadCancel}
-              >
-                取消
-              </button>
-              <button
-                style={{
-                  ...styles.confirmButton,
-                  ...((!targetDatasetId || isUploading) ? styles.disabledButton : {})
-                }}
-                onClick={handleUploadConfirm}
-                disabled={!targetDatasetId || isUploading}
-              >
-                {isUploading ? '上传中...' : '确认上传'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UploadModal
+        visible={showUploadModal}
+        datasets={datasets}
+        selectedFiles={selectedFiles}
+        targetDatasetId={targetDatasetId}
+        setTargetDatasetId={setTargetDatasetId}
+        isUploading={isUploading}
+        onConfirm={handleUploadConfirm}
+        onCancel={handleUploadCancel}
+      />
     </div>
   )
 }

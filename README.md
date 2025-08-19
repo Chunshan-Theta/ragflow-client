@@ -88,7 +88,7 @@ src/
 ├── components/          # Reusable UI components
 │   ├── AgentSelector.tsx
 │   ├── ChatPanel.tsx
-│   ├── KnowledgeBaseUpload.tsx
+│   ├── UploadModal.tsx
 │   ├── Settings.tsx
 │   └── SourcePanel.tsx
 ├── hooks/              # Custom React hooks
