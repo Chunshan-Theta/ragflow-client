@@ -155,18 +155,6 @@ const SourcePanel: React.FC = () => {
       {/* 头部 */}
       <div style={styles.header}>
         <h2 style={styles.title}>來源</h2>
-        <div style={styles.actions}>
-          <label style={styles.addButton}>
-            <input
-              type="file"
-              multiple
-              onChange={handleFileSelect}
-              style={styles.hiddenInput}
-              accept=".pdf,.doc,.docx,.txt,.md,.csv"
-            />
-            <span style={styles.addIcon}>+</span> 新增
-          </label>
-        </div>
       </div>
 
       {/* 数据集选择 */}
@@ -206,16 +194,6 @@ const SourcePanel: React.FC = () => {
             {/* 显示文档列表 */}
             {selectedDatasetId === dataset.id && (
               <div style={styles.documentsContainer}>
-                {/* 文档管理导航按钮 */}
-                <div style={styles.documentManagementButton}>
-                  <button
-                    style={styles.manageDocsButton}
-                    onClick={() => navigate('/documents')}
-                  >
-                    <span style={styles.manageDocsIcon}>⚙️</span>
-                    <span>管理文檔</span>
-                  </button>
-                </div>
                 
                 {isLoadingDocuments ? (
                   <div style={styles.loadingDocuments}>
