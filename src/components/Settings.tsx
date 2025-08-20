@@ -38,16 +38,17 @@ const Settings: React.FC = () => {
   };
   const init = async () => {
     // If we have a default agentId, use it directly
-    if (process.env.REACT_APP_DEFAULT_AGENT_ID) {
-      const finalSettings = {
-        ...settings,
-        agentId: process.env.REACT_APP_DEFAULT_AGENT_ID
-      }
-      await saveToStorage(finalSettings);
-      navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page || 'chat'));
-      return;
+
+    let finalSettings = {
+      ...settings,
     }
-    
+    if (process.env.REACT_APP_DEFAULT_AGENT_ID) {
+      finalSettings.agentId = process.env.REACT_APP_DEFAULT_AGENT_ID;
+    }
+    await saveToStorage(finalSettings);
+    if(process.env.REACT_APP_DEFAULT_Home_page){
+      navigate('/'+(process.env.REACT_APP_DEFAULT_Home_page));
+    }
   };
 
   useEffect(() => {
