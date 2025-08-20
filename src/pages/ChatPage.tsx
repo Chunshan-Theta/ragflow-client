@@ -675,7 +675,7 @@ const ChatPage: React.FC = () => {
       <div style={styles.mobileContainer}>
         <div style={styles.tabBar}>
           <Button onClick={() => setIsSidebarOpen(true)}>Knowledge Base</Button>
-          <Button onClick={() => setIsRightSidebarOpen(true)}>Chats</Button>
+          <Button onClick={() => { setIsSidebarOpen(false); setSelectedAssistant(null); }}>Chats</Button>
         </div>
         <div style={styles.mobileContent}>
           {isSidebarOpen ? (
@@ -706,32 +706,14 @@ const ChatPage: React.FC = () => {
                 </Space>
               </Card>
             </div>
-          ) : isRightSidebarOpen ? (
-            <List
-              loading={loading}
-              dataSource={chatAssistants}
-              renderItem={item => (
-                <List.Item onClick={() => createChatSession(item)} style={styles.chatItem}>
-                  <Text>{item.name}</Text>
-                  <Button
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditAssistant(item);
-                    }}
-                  >
-                    設定
-                  </Button>
-                </List.Item>
-              )}
-            />
-          ) : (
+          ) : selectedAssistant ? (
             <div style={styles.chatContainer}>
               {/* Chat messages */}
               <div style={styles.messagesContainer}>
                 {messages.map((message, index) => (
                   <div key={index} style={{
                     ...styles.messageWrapper,
+                    maxWidth: '85%',
                     display: 'flex',
                     justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start'
                   }}>
@@ -808,6 +790,25 @@ const ChatPage: React.FC = () => {
                 </Button>
               </div>
             </div>
+          ) : (
+            <List
+              loading={loading}
+              dataSource={chatAssistants}
+              renderItem={item => (
+                <List.Item onClick={() => createChatSession(item)} style={styles.chatItem}>
+                  <Text>{item.name}</Text>
+                  <Button
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditAssistant(item);
+                    }}
+                  >
+                    設定
+                  </Button>
+                </List.Item>
+              )}
+            />
           )}
         </div>
       </div>
