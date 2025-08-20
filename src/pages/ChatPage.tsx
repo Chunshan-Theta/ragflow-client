@@ -3,6 +3,8 @@ import { Button, Input, message, Card, List, Typography, Upload, Space, Divider,
 import { LeftOutlined, RightOutlined, UploadOutlined } from '@ant-design/icons';
 import '../styles/ChatPage.css';
 import { ReferenceModal } from '../components/ChatPanel';
+import UploadModal from '../components/UploadModal'
+import SourcePanel from '../components/SourcePanel'
 
 const { Text } = Typography;
 
@@ -150,7 +152,7 @@ const ChatPage: React.FC = () => {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string>('');
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[] | null>(null);
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [chatAssistants, setChatAssistants] = useState<ChatAssistant[]>([]);
@@ -165,6 +167,8 @@ const ChatPage: React.FC = () => {
   const [streamingReferences, setStreamingReferences] = useState<Reference[]>([]);
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [editingAssistant, setEditingAssistant] = useState<ChatAssistant | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [targetDatasetId, setTargetDatasetId] = useState<string>('');
 
   const allReferences = useRef<Map<string, Reference>>(new Map());
   const getRefKey = (ref: Reference) => {
@@ -229,15 +233,18 @@ const ChatPage: React.FC = () => {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedFiles(event.target.files);
+    const files = event.target.files
+    setSelectedFiles(files ? Array.from(files) : null);
+    setTargetDatasetId(selectedDatasetId || '');
+    setShowUploadModal(true);
   };
 
   const parseDocuments = async (documentIds: string[]) => {
-    if (!settings || !selectedDatasetId || documentIds.length === 0) return;
+    if (!settings || !targetDatasetId || documentIds.length === 0) return;
 
     try {
       setParsing(true);
-      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${selectedDatasetId}/chunks`, {
+      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${targetDatasetId}/chunks`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${settings.apiKey}`,
@@ -266,7 +273,7 @@ const ChatPage: React.FC = () => {
   };
 
   const handleUpload = async () => {
-    if (!settings || !selectedDatasetId || !selectedFiles) {
+    if (!settings || !targetDatasetId || !selectedFiles) {
       message.error('Please select a dataset and files first');
       return;
     }
@@ -274,11 +281,11 @@ const ChatPage: React.FC = () => {
     try {
       setUploading(true);
       const formData = new FormData();
-      Array.from(selectedFiles).forEach(file => {
+      selectedFiles.forEach(file => {
         formData.append('file', file);
       });
 
-      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${selectedDatasetId}/documents`, {
+      const response = await fetch(`${settings.apiUrl}/api/v1/datasets/${targetDatasetId}/documents`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${settings.apiKey}`
@@ -310,6 +317,7 @@ const ChatPage: React.FC = () => {
         }
 
         setSelectedFiles(null);
+        setShowUploadModal(false);
         const fileInput = document.getElementById('fileInput') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
         fetchDatasets();
@@ -674,21 +682,7 @@ const ChatPage: React.FC = () => {
             <div style={styles.knowledgeBase}>
               <Card title="Knowledge Base" bordered={false}>
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
-                  <div>
-                    <Text strong>Select Dataset</Text>
-                    <List
-                      dataSource={datasets}
-                      renderItem={item => (
-                        <List.Item
-                          onClick={() => setSelectedDatasetId(item.id)}
-                          className={`dataset-item ${selectedDatasetId === item.id ? 'selected' : ''}`}
-                        >
-                          <Text>{item.name}</Text>
-                          <Text type="secondary">{item.document_count} documents</Text>
-                        </List.Item>
-                      )}
-                    />
-                  </div>
+                  
                   <div>
                     <Text strong>Upload Files</Text>
                     <input
@@ -697,12 +691,13 @@ const ChatPage: React.FC = () => {
                       multiple
                       onChange={handleFileChange}
                       style={{ marginBottom: '10px' }}
+                      accept=".pdf,.doc,.docx,.txt,.md,.csv"
                     />
                     <Button
                       type="primary"
-                      onClick={handleUpload}
+                      onClick={() => setShowUploadModal(true)}
                       loading={uploading || parsing}
-                      disabled={!selectedDatasetId || !selectedFiles}
+                      disabled={!selectedFiles}
                       block
                     >
                       {uploading ? 'Uploading...' : parsing ? 'Parsing...' : 'Upload'}
@@ -842,79 +837,15 @@ const ChatPage: React.FC = () => {
         ...styles.sidebar,
         transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
       }}>
-        <Card title="Knowledge Base" bordered={false}>
-          <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <div>
-              <Text strong style={{ fontSize: '16px', marginBottom: '16px', display: 'block' }}>
-                Select Dataset
-              </Text>
-              <List
-                dataSource={datasets}
-                renderItem={item => (
-                  <div
-                    style={{
-                      ...styles.datasetItem,
-                      ...(selectedDatasetId === item.id ? {
-                        borderColor: '#1890ff',
-                        background: '#f0f7ff',
-                      } : {})
-                    }}
-                    onClick={() => setSelectedDatasetId(item.id)}
-                  >
-                    <div style={styles.datasetName}>{item.name}</div>
-                    <div style={styles.datasetCount}>
-                      {item.document_count} {item.document_count > 1 ? 'documents' : 'document'}
-                    </div>
-                  </div>
-                )}
-              />
-            </div>
-            <div style={styles.uploadSection}>
-              <Text strong style={{ fontSize: '16px', marginBottom: '16px', display: 'block' }}>
-                Upload Files
-              </Text>
-              <input
-                type="file"
-                id="fileInput"
-                multiple
-                onChange={handleFileChange}
-                style={{ display: 'none' }}
-                accept=".pdf,.doc,.docx,.txt,.md"
-              />
-              <label
-                htmlFor="fileInput"
-                style={{
-                  ...styles.uploadButton,
-                  ...(selectedFiles ? styles.uploadButtonHover : {})
-                }}
-              >
-                <span style={styles.uploadText}>
-                  <UploadOutlined />
-                  {selectedFiles
-                    ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected`
-                    : 'Click to upload files'}
-                </span>
-              </label>
-              <Button
-                type="primary"
-                onClick={handleUpload}
-                loading={uploading || parsing}
-                disabled={!selectedDatasetId || !selectedFiles}
-                style={{ marginTop: '12px', width: '100%' }}
-              >
-                {uploading ? 'Uploading...' : parsing ? 'Parsing...' : 'Upload'}
-              </Button>
-            </div>
-          </Space>
-        </Card>
+        <SourcePanel />
       </div>
 
       {/* Main Chat Area */}
       <div style={{
         ...styles.mainArea,
-        marginLeft: isSidebarOpen ? '28vw' : '3vw',
+        marginLeft: isSidebarOpen ? '380px' : '0px',
         marginRight: isRightSidebarOpen ? '28vw' : '3vw',
-        width: `calc(100% - ${isSidebarOpen ? '28vw' : '3vw'} - ${isRightSidebarOpen ? '28vw' : '3vw'})`,
+        width: `calc(100% - ${isSidebarOpen ? '380px' : '0px'} - ${isRightSidebarOpen ? '28vw' : '3vw'})`,
       }}>
         <div style={styles.chatContainer}>
           {selectedAssistant ? (
@@ -1060,6 +991,17 @@ const ChatPage: React.FC = () => {
         onUpdate={updateAssistant}
         datasets={datasets}
       />
+      {/* Upload Modal */}
+      <UploadModal
+        visible={showUploadModal}
+        datasets={datasets}
+        selectedFiles={selectedFiles}
+        targetDatasetId={targetDatasetId}
+        setTargetDatasetId={setTargetDatasetId}
+        isUploading={uploading || parsing}
+        onConfirm={handleUpload}
+        onCancel={() => setShowUploadModal(false)}
+      />
     </div>
   );
 };
@@ -1120,13 +1062,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     left: 0,
     top: 0,
     bottom: 0,
-    width: '25vw',
-    background: '#fff',
-    borderRight: '1px solid #e2e8f0',
+    width: '380px',
     transition: 'transform 0.3s ease',
     zIndex: 1000,
-    overflow: 'auto',
-    padding: '20px',
+    overflow: 'hidden',
   },
 
   rightSidebar: {
