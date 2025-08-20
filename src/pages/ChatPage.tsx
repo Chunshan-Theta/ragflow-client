@@ -358,39 +358,6 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  const createChatSession = async (assistant: ChatAssistant) => {
-    if (!settings) {
-      message.error('Please configure settings first');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${settings.apiUrl}/api/v1/chats/${assistant.id}/sessions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${settings.apiKey}`
-        },
-        body: JSON.stringify({
-          name: `Session_${Date.now()}`
-        })
-      });
-
-      const data = await response.json();
-      if (data.code === 0) {
-        setChatSession(data.data);
-        setSelectedAssistant(assistant);
-        setMessages([]);
-        message.success('Chat session created successfully!');
-        await sendHiddenGreeting(assistant.id, data.data.id);
-      } else {
-        message.error(data.message);
-      }
-    } catch (error) {
-      message.error('Failed to create chat session');
-    }
-  };
-
   const sendHiddenGreeting = async (assistantId: string, sessionId: string) => {
     if (!settings) return;
 
@@ -445,6 +412,252 @@ const ChatPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error sending hidden greeting:', error);
+    }
+  };
+
+  // 會話建立後自動先發言（不顯示使用者 hi，只顯示助理回覆）
+  const sendInitialAssistantMessage = async (assistantId: string, sessionId: string) => {
+    if (!settings) return;
+
+    // 建立僅助理的暫存訊息以便串流更新
+    setMessages(prev => [
+      ...prev,
+      { role: 'assistant' as const, content: '' }
+    ]);
+    setIsStreaming(true);
+    setStreamingReferences([]);
+
+    try {
+      const response = await fetch(`${settings.apiUrl}/api/v1/chats/${assistantId}/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          question: 'hi',
+          stream: true,
+          session_id: sessionId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('ReadableStream not supported');
+      }
+
+      const decoder = new TextDecoder();
+      let partialLine = '';
+      let lastAnswer = '';
+      let accumulatedReferences: Reference[] = [];
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = (partialLine + chunk).split('\n');
+        partialLine = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          if (!line.startsWith('data:')) continue;
+
+          const jsonStr = line.slice(5).trim();
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.code === 0) {
+              if (data.data === true) {
+                break;
+              } else if (data.data?.answer) {
+                lastAnswer = data.data.answer;
+                setMessages(prev => [
+                  ...prev.slice(0, -1),
+                  {
+                    role: 'assistant',
+                    content: lastAnswer,
+                    references: accumulatedReferences
+                  }
+                ]);
+              }
+              if (data.data?.reference) {
+                if (typeof data.data.reference === 'object') {
+                  if (data.data.reference.chunks && Array.isArray(data.data.reference.chunks)) {
+                    accumulatedReferences = data.data.reference.chunks.map((chunk: any) => ({
+                      content: chunk.content,
+                      document_name: chunk.document_name,
+                      positions: chunk.positions || [],
+                      dataset_id: chunk.dataset_id,
+                      document_id: chunk.document_id,
+                      id: chunk.id
+                    }));
+                    setStreamingReferences(accumulatedReferences);
+                  } else if (Array.isArray(data.data.reference)) {
+                    accumulatedReferences = [...accumulatedReferences, ...data.data.reference];
+                    setStreamingReferences(accumulatedReferences);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing JSON:', e);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to send initial assistant message', error);
+      setMessages(prev => prev.slice(0, -1));
+    } finally {
+      setIsStreaming(false);
+      setStreamingReferences([]);
+    }
+  };
+
+  const createChatSession = async (assistant: ChatAssistant) => {
+    if (!settings) {
+      message.error('Please configure settings first');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${settings.apiUrl}/api/v1/chats/${assistant.id}/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          name: `Session_${Date.now()}`
+        })
+      });
+
+      const data = await response.json();
+      if (data.code === 0) {
+        setChatSession(data.data);
+        setSelectedAssistant(assistant);
+        setMessages([]);
+        message.success('Chat session created successfully!');
+        await sendInitialAssistantMessage(assistant.id, data.data.id);
+      } else {
+        message.error(data.message || 'Failed to create chat session');
+      }
+    } catch (error) {
+      message.error('Failed to create chat session');
+      console.error('Error:', error);
+    }
+  };
+
+  // 建議問題
+  const suggestedQuestions: string[] = [
+    '台積電最近幾年在美國花了多少錢？',
+    '目前川普關稅對於亞洲各國是多少？',
+    '你能幫我做什麼？'
+  ];
+
+  // 直接以文字送出訊息（給建議問題用）
+  const sendMessageWithText = async (text: string) => {
+    if (!settings || !selectedAssistant || !chatSession || !text.trim()) return;
+
+    const userMessage = { role: 'user' as const, content: text };
+    const assistantMessage = { role: 'assistant' as const, content: '' };
+
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    setInputMessage('');
+    setIsStreaming(true);
+    setStreamingReferences([]);
+
+    try {
+      const response = await fetch(`${settings.apiUrl}/api/v1/chats/${selectedAssistant.id}/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          question: text,
+          stream: true,
+          session_id: chatSession.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('ReadableStream not supported');
+      }
+
+      const decoder = new TextDecoder();
+      let partialLine = '';
+      let lastAnswer = '';
+      let accumulatedReferences: Reference[] = [];
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = (partialLine + chunk).split('\n');
+        partialLine = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          if (!line.startsWith('data:')) continue;
+
+          const jsonStr = line.slice(5).trim();
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.code === 0) {
+              if (data.data === true) {
+                break;
+              } else if (data.data?.answer) {
+                lastAnswer = data.data.answer;
+                setMessages(prev => [
+                  ...prev.slice(0, -1),
+                  {
+                    role: 'assistant',
+                    content: lastAnswer,
+                    references: accumulatedReferences
+                  }
+                ]);
+              }
+              if (data.data?.reference) {
+                if (typeof data.data.reference === 'object') {
+                  if (data.data.reference.chunks && Array.isArray(data.data.reference.chunks)) {
+                    accumulatedReferences = data.data.reference.chunks.map((chunk: any) => ({
+                      content: chunk.content,
+                      document_name: chunk.document_name,
+                      positions: chunk.positions || [],
+                      dataset_id: chunk.dataset_id,
+                      document_id: chunk.document_id,
+                      id: chunk.id
+                    }));
+                    setStreamingReferences(accumulatedReferences);
+                  } else if (Array.isArray(data.data.reference)) {
+                    accumulatedReferences = [...accumulatedReferences, ...data.data.reference];
+                    setStreamingReferences(accumulatedReferences);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing JSON:', e);
+          }
+        }
+      }
+    } catch (error) {
+      message.error('Failed to send message');
+      console.error('Error:', error);
+      setMessages(prev => prev.slice(0, -1));
+    } finally {
+      setIsStreaming(false);
+      setStreamingReferences([]);
     }
   };
 
@@ -771,6 +984,20 @@ const ChatPage: React.FC = () => {
                   </div>
                 </div>
               )}
+              {/* Suggested questions */}
+              <div style={styles.suggestionsContainer}>
+                {suggestedQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    style={styles.suggestionButton}
+                    disabled={isStreaming}
+                    onClick={() => sendMessageWithText(q)}
+                  >
+                    {q}
+                    <span style={{ marginLeft: 8, color: '#1a73e8' }}>→</span>
+                  </button>
+                ))}
+              </div>
               {/* Input area */}
               <div style={styles.inputContainer}>
                 <Input
@@ -913,6 +1140,20 @@ const ChatPage: React.FC = () => {
                   </div>
                 </div>
               )}
+              {/* Suggested questions */}
+              <div style={styles.suggestionsContainer}>
+                {suggestedQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    style={styles.suggestionButton}
+                    disabled={isStreaming}
+                    onClick={() => sendMessageWithText(q)}
+                  >
+                    {q}
+                    <span style={{ marginLeft: 8, color: '#1a73e8' }}>→</span>
+                  </button>
+                ))}
+              </div>
               {/* Input area */}
               <div style={styles.inputContainer}>
                 <Input
@@ -1259,6 +1500,29 @@ const styles: { [key: string]: React.CSSProperties } = {
   loadingDots: {
     display: 'flex',
     gap: '4px',
+  },
+
+  // 建議問題樣式
+  suggestionsContainer: {
+    padding: '0 20px 10px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    marginBottom: '90px',
+  },
+  suggestionButton: {
+    background: 'transparent',
+    border: '1px solid #e8eaed',
+    borderRadius: '20px',
+    padding: '10px 14px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontSize: '14px',
+    color: '#5f6368',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    transition: 'all 0.2s ease',
   },
 };
 
