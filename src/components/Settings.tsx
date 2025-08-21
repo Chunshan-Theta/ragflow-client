@@ -53,6 +53,7 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     // Load saved settings from localStorage
+    console.log("settings",settings)
     if (settings) {
       init();
     }

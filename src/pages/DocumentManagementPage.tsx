@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { createDatasetApi, Dataset, Document, Settings, Chunk } from '../utils/datasetApi'
 import '../styles/DocumentManagementPage.css'
-import UploadModal from '../components/UploadModal'
+import UploadModal from '../components/UploadModal_cdri'
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
@@ -529,6 +529,11 @@ const DocumentManagementPage: React.FC = () => {
   const [isLoadingChunks, setIsLoadingChunks] = useState(false)
   const [showKeywords, setShowKeywords] = useState(true);
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [isProcessingDocs, setIsProcessingDocs] = useState(false)
+  const [processingMessage, setProcessingMessage] = useState<string | null>(null)
+  const [processingStage, setProcessingStage] = useState<'upload' | 'parse' | 'classify' | null>(null)
+  const [processingTotal, setProcessingTotal] = useState<number>(0)
+  const [processingIndex, setProcessingIndex] = useState<number>(0)
   const handleKeywordClick = (kw: string) => {
     setSelectedKeywords(selected =>
       selected.includes(kw)
@@ -685,28 +690,98 @@ const DocumentManagementPage: React.FC = () => {
     event.target.value = ''
   }
 
+  const waitForRagflowDocReady = async (datasetId: string, docId: string): Promise<void> => {
+    if (!settings) return
+    const timeoutMs = 10 * 60 * 1000
+    const intervalMs = 2000
+    const start = Date.now()
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        const res = await fetch(`${settings.apiUrl}/api/v1/datasets/${datasetId}/documents/${docId}/chunks`, {
+          headers: { 'Authorization': `Bearer ${settings.apiKey}` },
+        })
+        const json = await res.json()
+        const runStatus = json?.data?.doc?.run
+        if (runStatus === 'DONE') return
+      } catch (e) {
+        // swallow and retry
+      }
+      if (Date.now() - start > timeoutMs) {
+        throw new Error('等待文件解析超時')
+      }
+      await new Promise((r) => setTimeout(r, intervalMs))
+    }
+  }
+
   const handleUploadConfirm = async () => {
     if (!selectedFiles || !targetDatasetId || !settings) return
 
     setIsUploading(true)
+    setIsProcessingDocs(true)
+    setProcessingStage('upload')
+    setProcessingMessage('上傳中...')
+    setProcessingIndex(0)
+    setProcessingTotal(0)
     
     try {
       const datasetApi = createDatasetApi(settings)
       const documentIds = await datasetApi.uploadDocuments(targetDatasetId, selectedFiles)
+      setProcessingTotal(documentIds.length)
       
       if (documentIds.length > 0) {
+        setProcessingStage('parse')
+        setProcessingMessage('解析中...')
         await datasetApi.parseDocuments(targetDatasetId, documentIds)
       }
       
-      fetchDatasets()
+      // 等待每個文件完成解析並分類
+      for (let i = 0; i < documentIds.length; i++) {
+        const docId = documentIds[i]
+        setProcessingIndex(i)
+        setProcessingStage('parse')
+        setProcessingMessage(`解析中 (${i + 1}/${documentIds.length})...`)
+        let isReady = true
+        try {
+          await waitForRagflowDocReady(targetDatasetId, docId)
+        } catch (e) {
+          isReady = false
+          console.error(`等待文件 ${docId} 解析超時或失敗`, e)
+        }
+        if (!isReady) {
+          console.warn(`跳過分類，因為文件 ${docId} 尚未完成解析`)
+          continue
+        }
+        setProcessingStage('classify')
+        setProcessingMessage(`AI 分類中 (${i + 1}/${documentIds.length})...`)
+        try {
+          await fetch(`https://api.cdri.voiss.cc/api/analyze/classification-doc`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+              dataset_id: targetDatasetId,
+              doc_id: docId
+            })
+          })
+        } catch (err) {
+          console.error(`Failed to classify document ${docId}:`, err);
+        }
+      }
+      
+      await fetchDatasets()
+      alert(`成功上傳 ${selectedFiles.length} 個文件，解析與分類已處理。`)
       setShowUploadModal(false)
       setSelectedFiles(null)
       setTargetDatasetId('')
-      alert(`成功上傳 ${selectedFiles.length} 個文件，需要等待解析完成才能使用。`)
     } catch (error) {
       console.error('Upload failed:', error)
       alert('上传失败，请重试')
     } finally {
+      setIsProcessingDocs(false)
+      setProcessingStage(null)
+      setProcessingMessage(null)
       setIsUploading(false)
     }
   }
@@ -990,6 +1065,29 @@ const DocumentManagementPage: React.FC = () => {
         onConfirm={handleUploadConfirm}
         onCancel={handleUploadCancel}
       />
+      {isProcessingDocs && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {processingStage === 'upload' ? <div style={styles.spinner}></div> : <span>✅</span>}
+                <span>上傳 {processingStage === 'upload' ? '(進行中)' : (processingStage ? '(完成)' : '')}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {processingStage === 'parse' ? <div style={styles.spinner}></div> : (processingStage && processingStage === 'classify') ? <span>✅</span> : <span>⏳</span>}
+                <span>解析中 {processingTotal > 0 ? `(${processingIndex + 1}/${processingTotal})` : ''}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {processingStage === 'classify' ? <div style={styles.spinner}></div> : <span>⏳</span>}
+                <span>AI 分類中 {processingTotal > 0 ? `(${processingIndex + 1}/${processingTotal})` : ''}</span>
+              </div>
+              {processingMessage && (
+                <div style={{ marginTop: 8, color: '#5f6368' }}>{processingMessage}</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

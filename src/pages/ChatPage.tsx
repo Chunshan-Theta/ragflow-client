@@ -5,7 +5,7 @@ import '../styles/ChatPage.css';
 import { ReferenceModal } from '../components/ChatPanel';
 import UploadModal from '../components/UploadModal'
 import SourcePanel from '../components/SourcePanel'
-import { fetchChatAssistants as apiFetchChatAssistants } from '../utils/chatApi';
+import { fetchChatAssistants as apiFetchChatAssistants } from '../utils/chatApi_cdri';
 
 const { Text } = Typography;
 
