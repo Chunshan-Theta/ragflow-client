@@ -5,6 +5,7 @@ import '../styles/ChatPage.css';
 import { ReferenceModal } from '../components/ChatPanel';
 import UploadModal from '../components/UploadModal'
 import SourcePanel from '../components/SourcePanel'
+import { fetchChatAssistants as apiFetchChatAssistants } from '../utils/chatApi';
 
 const { Text } = Typography;
 
@@ -336,82 +337,12 @@ const ChatPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch(
-        `${settings.apiUrl}/api/v1/chats?page=1&page_size=30&orderby=update_time&desc=true`,
-        {
-          headers: {
-            'Authorization': `Bearer ${settings.apiKey}`
-          }
-        }
-      );
-
-      const data = await response.json();
-      if (data.code === 0 && Array.isArray(data.data)) {
-        setChatAssistants(data.data);
-      } else {
-        message.error('Failed to fetch chat assistants');
-      }
+      const assistants = await apiFetchChatAssistants(settings.apiUrl, settings.apiKey);
+      setChatAssistants(assistants);
     } catch (error) {
-      message.error('Error fetching chat assistants');
+      message.error(error instanceof Error ? error.message : 'Error fetching chat assistants');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const sendHiddenGreeting = async (assistantId: string, sessionId: string) => {
-    if (!settings) return;
-
-    try {
-      const response = await fetch(`${settings.apiUrl}/api/v1/chats/${assistantId}/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${settings.apiKey}`
-        },
-        body: JSON.stringify({
-          question: "hi",
-          stream: true,
-          session_id: sessionId
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('ReadableStream not supported');
-      }
-
-      const decoder = new TextDecoder();
-      let partialLine = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = (partialLine + chunk).split('\n');
-        partialLine = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.trim() === '') continue;
-          if (!line.startsWith('data:')) continue;
-
-          const jsonStr = line.slice(5).trim();
-          try {
-            const data = JSON.parse(jsonStr);
-            if (data.code === 0 && data.data === true) {
-              break;
-            }
-          } catch (e) {
-            console.error('Error parsing hidden greeting JSON:', e);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error sending hidden greeting:', error);
     }
   };
 
@@ -873,6 +804,7 @@ const ChatPage: React.FC = () => {
   };
 
   if (!settings) {
+    console.log("settings",settings)
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <h2>Please configure settings first</h2>
