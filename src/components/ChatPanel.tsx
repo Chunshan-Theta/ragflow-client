@@ -68,10 +68,9 @@ export const ReferenceModal: React.FC<{
           <button
             onClick={() => {
               handleDownload()
-              alert('下載準備中，請稍後....')
-              onClose()
+              alert('下載準備中，請稍後。準備完成時會跳出下載視窗，速度基於網路狀況而有所影響。')
             }}
-            style={{ ...styles.modalButton, display: 'none' }} // 暫時隱藏按鈕
+            style={{ ...styles.modalButton}} // 暫時隱藏按鈕
             disabled={!reference.dataset_id || !reference.document_id}
           >
             下載文件
@@ -540,19 +539,16 @@ const ChatPanel: React.FC = () => {
 
         <div style={styles.chatInputSection}>
           <div style={styles.inputWrapper}>
+            <SuggestedQuestions
+              questions={suggestedQuestions}
+              onQuestionClick={handleSendMessage}
+            />
             <ChatInput
               value={inputValue}
               onChange={setInputValue}
               onSubmit={() => handleSendMessage(inputValue)}
               disabled={isSending}
             />
-
-            {messages.length === 0 && (
-              <SuggestedQuestions
-                questions={suggestedQuestions}
-                onQuestionClick={handleSendMessage}
-              />
-            )}
           </div>
         </div>
 

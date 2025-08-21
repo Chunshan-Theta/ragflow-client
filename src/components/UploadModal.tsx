@@ -80,7 +80,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
             onClick={onConfirm}
             disabled={!targetDatasetId || isUploading}
           >
-            {isUploading ? '上传中...' : '确认上传'}
+            {isUploading ? '上传中...' : '確認上傳'}
           </button>
         </div>
       </div>
